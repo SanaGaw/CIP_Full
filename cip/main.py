@@ -7,11 +7,13 @@ static files and templates.
 from __future__ import annotations
 
 import logging
-
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from pathlib import Path
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
 from .config import get_settings
 from .db import init_db
@@ -53,11 +55,26 @@ def create_app() -> FastAPI:
 
     # Static files and templates
     app.mount("/static", StaticFiles(directory="cip/static"), name="static")
-    templates = Jinja2Templates(directory="cip/templates")
+
+    def render_html(path: str) -> HTMLResponse:
+        file_path = Path(__file__).resolve().parent / path
+        return HTMLResponse(file_path.read_text(encoding="utf-8"))
 
     @app.get("/")
     async def root():
         return {"message": "CIP v2 API"}
+
+    @app.get("/admin")
+    async def admin_dashboard():
+        return render_html("templates/admin/dashboard.html")
+
+    @app.get("/facilitator")
+    async def facilitator_dashboard():
+        return render_html("templates/facilitator/dashboard.html")
+
+    @app.get("/participant")
+    async def participant_chat():
+        return render_html("templates/participant/chat.html")
 
     @app.websocket("/ws/{user_id}")
     async def websocket_endpoint(ws: WebSocket, user_id: str):
