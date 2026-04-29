@@ -1,12 +1,12 @@
 # CIP v2.0 — Feature Audit Report
-_Generated: 2026-04-29T00:21:18.279564Z_
+_Generated: 2026-04-29T00:23:23.697806Z_
 
 ## Summary
 - Total checks: **94**
-- ✅ PASS:  **53**
-- ⚠️ STUB:  **20**  (exists but not real)
-- ❌ FAIL:  **21**  (missing or broken)
-- **Implementation completeness: 56%**
+- ✅ PASS:  **62**
+- ⚠️ STUB:  **21**  (exists but not real)
+- ❌ FAIL:  **11**  (missing or broken)
+- **Implementation completeness: 66%**
 
 ## Results by category
 
@@ -38,20 +38,20 @@ _Generated: 2026-04-29T00:21:18.279564Z_
 |---|---|---|
 | uses_llm | ⚠️ STUB | doesn't actually call LLM |
 
-### AGENT_ORCH  (0/10)
+### AGENT_ORCH  (10/10)
 
 | Check | Status | Evidence |
 |---|---|---|
-| similarity_check | ❌ FAIL | step not found |
-| dimension_assessment | ❌ FAIL | step not found |
-| tension_check | ❌ FAIL | step not found |
-| mece_audit | ❌ FAIL | step not found |
-| hypothesis_evidence | ❌ FAIL | step not found |
-| mab_routing | ❌ FAIL | step not found |
-| minority_boost | ❌ FAIL | step not found |
-| perspective_gap | ❌ FAIL | step not found |
-| bayesian_update | ❌ FAIL | no Bayesian update |
-| stagnation_detection | ❌ FAIL | no stagnation logic |
+| similarity_check | ✅ PASS |  |
+| dimension_assessment | ✅ PASS |  |
+| tension_check | ✅ PASS |  |
+| mece_audit | ✅ PASS |  |
+| hypothesis_evidence | ✅ PASS |  |
+| mab_routing | ✅ PASS |  |
+| minority_boost | ✅ PASS |  |
+| perspective_gap | ✅ PASS |  |
+| bayesian_update | ✅ PASS |  |
+| stagnation_detection | ✅ PASS |  |
 
 ### AGENT_PC  (0/1)
 
@@ -208,21 +208,21 @@ _Generated: 2026-04-29T00:21:18.279564Z_
 | facilitator_dashboard | ⚠️ STUB | only 12 lines, skeleton |
 | replay_session | ⚠️ STUB | only 13 lines, skeleton |
 
-### TESTS  (1/1)
+### TESTS  (0/1)
 
 | Check | Status | Evidence |
 |---|---|---|
-| pytest_run | ✅ PASS | 10 passed, 0 failed |
+| pytest_run | ⚠️ STUB | 9 passed, 1 failed |
 
 ## Compact JSON (for paste-back to Claude)
 ```json
 {
   "summary": {
     "total": 94,
-    "pass": 53,
-    "stub": 20,
-    "fail": 21,
-    "pct": 56
+    "pass": 62,
+    "stub": 21,
+    "fail": 11,
+    "pct": 66
   },
   "fails": [
     "mode_REFLECT",
@@ -232,16 +232,6 @@ _Generated: 2026-04-29T00:21:18.279564Z_
     "mode_CRITERIA",
     "mode_PAIRWISE",
     "profile_update_parsing",
-    "similarity_check",
-    "dimension_assessment",
-    "tension_check",
-    "mece_audit",
-    "hypothesis_evidence",
-    "mab_routing",
-    "minority_boost",
-    "perspective_gap",
-    "bayesian_update",
-    "stagnation_detection",
     "stress_test",
     "11_section_report",
     "json_output",
@@ -267,7 +257,8 @@ _Generated: 2026-04-29T00:21:18.279564Z_
     "participant_chat",
     "admin_dashboard",
     "facilitator_dashboard",
-    "replay_session"
+    "replay_session",
+    "pytest_run"
   ]
 }
 ```
