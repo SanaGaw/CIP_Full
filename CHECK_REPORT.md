@@ -1,12 +1,12 @@
 # CIP v2.0 — Feature Audit Report
-_Generated: 2026-04-29T00:26:42.879562Z_
+_Generated: 2026-04-29T00:34:24.172522Z_
 
 ## Summary
-- Total checks: **94**
-- ✅ PASS:  **72**
+- Total checks: **95**
+- ✅ PASS:  **77**
 - ⚠️ STUB:  **18**  (exists but not real)
-- ❌ FAIL:  **4**  (missing or broken)
-- **Implementation completeness: 77%**
+- ❌ FAIL:  **0**  (missing or broken)
+- **Implementation completeness: 81%**
 
 ## Results by category
 
@@ -24,13 +24,13 @@ _Generated: 2026-04-29T00:26:42.879562Z_
 | mode_PAIRWISE | ✅ PASS |  |
 | profile_update_parsing | ✅ PASS |  |
 
-### AGENT_DEVIL  (0/3)
+### AGENT_DEVIL  (2/3)
 
 | Check | Status | Evidence |
 |---|---|---|
 | phase_frameworks | ⚠️ STUB | only 0/4 frameworks referenced |
-| stress_test | ❌ FAIL | no stress_test |
-| implementation | ⚠️ STUB | contains the word 'stub' |
+| stress_test | ✅ PASS |  |
+| implementation | ✅ PASS |  |
 
 ### AGENT_HYP  (0/1)
 
@@ -59,18 +59,19 @@ _Generated: 2026-04-29T00:26:42.879562Z_
 |---|---|---|
 | uses_llm | ⚠️ STUB | doesn't actually call LLM |
 
-### AGENT_RAP  (0/2)
+### AGENT_RAP  (1/2)
 
 | Check | Status | Evidence |
 |---|---|---|
-| 11_section_report | ❌ FAIL | no real report structure |
-| json_output | ❌ FAIL | no json output |
+| 11_section_report | ⚠️ STUB | only 3/11 sections |
+| json_output | ✅ PASS |  |
 
-### APP  (0/1)
+### APP  (2/2)
 
 | Check | Status | Evidence |
 |---|---|---|
-| imports_cleanly | ❌ FAIL | ModuleNotFoundError: No module named 'fastapi' |
+| imports_cleanly | ✅ PASS |  |
+| health_endpoint | ✅ PASS |  |
 
 ### ENGINE_AHP  (1/1)
 
@@ -218,21 +219,16 @@ _Generated: 2026-04-29T00:26:42.879562Z_
 ```json
 {
   "summary": {
-    "total": 94,
-    "pass": 72,
+    "total": 95,
+    "pass": 77,
     "stub": 18,
-    "fail": 4,
-    "pct": 77
+    "fail": 0,
+    "pct": 81
   },
-  "fails": [
-    "stress_test",
-    "11_section_report",
-    "json_output",
-    "imports_cleanly"
-  ],
+  "fails": [],
   "stubs": [
     "phase_frameworks",
-    "implementation",
+    "11_section_report",
     "uses_llm",
     "uses_llm",
     "real_similarity",
