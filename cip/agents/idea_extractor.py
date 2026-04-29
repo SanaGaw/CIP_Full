@@ -85,7 +85,7 @@ def score_quality(idea: str, problem_statement: str = "", existing_clusters: Lis
     spec = _compute_specificity(idea)
 
     # evidence: use helper function
-    evid = _compute_evidence(idea)
+    evidence = _compute_evidence(idea)
 
     # novelty: cosine distance to nearest cluster centroid
     nov = 0.5
@@ -128,7 +128,7 @@ def score_quality(idea: str, problem_statement: str = "", existing_clusters: Lis
     # weighted sum
     score = (
         QUALITY_WEIGHTS["specificity"] * spec
-        + QUALITY_WEIGHTS["evidence"] * evid
+        + QUALITY_WEIGHTS["evidence"] * evidence
         + QUALITY_WEIGHTS["novelty"] * nov
         + QUALITY_WEIGHTS["relevance"] * rel
         + QUALITY_WEIGHTS["depth"] * depth

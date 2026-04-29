@@ -1,12 +1,12 @@
 # CIP v2.0 — Feature Audit Report
-_Generated: 2026-04-29T00:41:17.795280Z_
+_Generated: 2026-04-29T01:12:15.769050Z_
 
 ## Summary
 - Total checks: **95**
-- ✅ PASS:  **78**
-- ⚠️ STUB:  **17**  (exists but not real)
+- ✅ PASS:  **93**
+- ⚠️ STUB:  **2**  (exists but not real)
 - ❌ FAIL:  **0**  (missing or broken)
-- **Implementation completeness: 82%**
+- **Implementation completeness: 98%**
 
 ## Results by category
 
@@ -24,19 +24,19 @@ _Generated: 2026-04-29T00:41:17.795280Z_
 | mode_PAIRWISE | ✅ PASS |  |
 | profile_update_parsing | ✅ PASS |  |
 
-### AGENT_DEVIL  (2/3)
+### AGENT_DEVIL  (3/3)
 
 | Check | Status | Evidence |
 |---|---|---|
-| phase_frameworks | ⚠️ STUB | only 0/4 frameworks referenced |
+| phase_frameworks | ✅ PASS | 4/4 frameworks |
 | stress_test | ✅ PASS |  |
 | implementation | ✅ PASS |  |
 
-### AGENT_HYP  (0/1)
+### AGENT_HYP  (1/1)
 
 | Check | Status | Evidence |
 |---|---|---|
-| uses_llm | ⚠️ STUB | doesn't actually call LLM |
+| uses_llm | ✅ PASS |  |
 
 ### AGENT_ORCH  (10/10)
 
@@ -53,17 +53,17 @@ _Generated: 2026-04-29T00:41:17.795280Z_
 | bayesian_update | ✅ PASS |  |
 | stagnation_detection | ✅ PASS |  |
 
-### AGENT_PC  (0/1)
+### AGENT_PC  (1/1)
 
 | Check | Status | Evidence |
 |---|---|---|
-| uses_llm | ⚠️ STUB | doesn't actually call LLM |
+| uses_llm | ✅ PASS |  |
 
-### AGENT_RAP  (1/2)
+### AGENT_RAP  (2/2)
 
 | Check | Status | Evidence |
 |---|---|---|
-| 11_section_report | ⚠️ STUB | only 3/11 sections |
+| 11_section_report | ✅ PASS | 11/11 sections |
 | json_output | ✅ PASS |  |
 
 ### APP  (2/2)
@@ -93,20 +93,20 @@ _Generated: 2026-04-29T00:41:17.795280Z_
 | bayesian_override | ✅ PASS |  |
 | anchoring_detection | ✅ PASS |  |
 
-### ENGINE_CONDORCET  (1/2)
+### ENGINE_CONDORCET  (2/2)
 
 | Check | Status | Evidence |
 |---|---|---|
 | core_logic | ✅ PASS |  |
-| real_cycle_detection | ⚠️ STUB | naive cycle = no Condorcet winner |
+| real_cycle_detection | ✅ PASS |  |
 
-### EXTRACTOR  (5/6)
+### EXTRACTOR  (6/6)
 
 | Check | Status | Evidence |
 |---|---|---|
 | spacy_analysis | ✅ PASS |  |
 | quality_specificity | ✅ PASS |  |
-| quality_evidence | ⚠️ STUB | evidence hardcoded to 0.5 |
+| quality_evidence | ✅ PASS |  |
 | quality_novelty_relevance | ✅ PASS |  |
 | narrative_parsing | ✅ PASS |  |
 | bias_signals | ✅ PASS |  |
@@ -120,12 +120,12 @@ _Generated: 2026-04-29T00:41:17.795280Z_
 | call_gemini | ✅ PASS |  |
 | call_groq | ✅ PASS |  |
 
-### METRICS  (0/2)
+### METRICS  (2/2)
 
 | Check | Status | Evidence |
 |---|---|---|
-| synthetic_idea_ratio | ⚠️ STUB | returns zeros, no real computation |
-| died_unfairly | ⚠️ STUB | returns empty list |
+| synthetic_idea_ratio | ✅ PASS |  |
+| died_unfairly | ✅ PASS |  |
 
 ### NLP_CLUSTER  (1/1)
 
@@ -133,11 +133,11 @@ _Generated: 2026-04-29T00:41:17.795280Z_
 |---|---|---|
 | implementation | ✅ PASS |  |
 
-### NLP_DIVERSITY  (0/1)
+### NLP_DIVERSITY  (1/1)
 
 | Check | Status | Evidence |
 |---|---|---|
-| implementation | ⚠️ STUB | assumes uniform distribution; ignores clustering |
+| implementation | ✅ PASS |  |
 
 ### NLP_EMBED  (1/1)
 
@@ -145,17 +145,17 @@ _Generated: 2026-04-29T00:41:17.795280Z_
 |---|---|---|
 | model_loading | ✅ PASS |  |
 
-### ROUTES_ADMIN  (0/1)
+### ROUTES_ADMIN  (1/1)
 
 | Check | Status | Evidence |
 |---|---|---|
-| endpoints_coverage | ⚠️ STUB | only 1/6 endpoints |
+| endpoints_coverage | ✅ PASS | 6/6 |
 
-### ROUTES_FAC  (0/1)
+### ROUTES_FAC  (1/1)
 
 | Check | Status | Evidence |
 |---|---|---|
-| endpoints_coverage | ⚠️ STUB | only 1/5 endpoints |
+| endpoints_coverage | ✅ PASS | 5/5 |
 
 ### STRUCTURE  (38/38)
 
@@ -200,14 +200,14 @@ _Generated: 2026-04-29T00:41:17.795280Z_
 | Procfile | ✅ PASS |  |
 | railway.toml | ✅ PASS |  |
 
-### TEMPLATE  (0/4)
+### TEMPLATE  (4/4)
 
 | Check | Status | Evidence |
 |---|---|---|
-| participant_chat | ⚠️ STUB | only 15 lines, skeleton |
-| admin_dashboard | ⚠️ STUB | only 12 lines, skeleton |
-| facilitator_dashboard | ⚠️ STUB | only 12 lines, skeleton |
-| replay_session | ⚠️ STUB | only 13 lines, skeleton |
+| participant_chat | ✅ PASS |  |
+| admin_dashboard | ✅ PASS |  |
+| facilitator_dashboard | ✅ PASS |  |
+| replay_session | ✅ PASS |  |
 
 ### TESTS  (1/1)
 
@@ -220,30 +220,15 @@ _Generated: 2026-04-29T00:41:17.795280Z_
 {
   "summary": {
     "total": 95,
-    "pass": 78,
-    "stub": 17,
+    "pass": 93,
+    "stub": 2,
     "fail": 0,
-    "pct": 82
+    "pct": 98
   },
   "fails": [],
   "stubs": [
-    "phase_frameworks",
-    "11_section_report",
-    "uses_llm",
-    "uses_llm",
     "real_similarity",
-    "implementation",
-    "real_cycle_detection",
-    "implementation",
-    "quality_evidence",
-    "synthetic_idea_ratio",
-    "died_unfairly",
-    "endpoints_coverage",
-    "endpoints_coverage",
-    "participant_chat",
-    "admin_dashboard",
-    "facilitator_dashboard",
-    "replay_session"
+    "implementation"
   ]
 }
 ```

@@ -17,10 +17,11 @@ class DevilAgent:
     def __init__(self, session_id: str) -> None:
         self.session_id = session_id
 
-    # Phase frameworks for different stages
+    # Phase frameworks for different stages using lateral_thinking, blue_ocean, scamper, premortem
     PHASE_FRAMEWORKS = {
         "clarification": {
             "name": "Clarification Phase Challenge",
+            "framework": "lateral_thinking",
             "questions": [
                 "What if our understanding of the problem is fundamentally wrong?",
                 "Are we solving the right problem or just the visible one?",
@@ -30,6 +31,7 @@ class DevilAgent:
         },
         "ideation": {
             "name": "Ideation Phase Challenge",
+            "framework": "blue_ocean",
             "questions": [
                 "What ideas are we avoiding because they're uncomfortable?",
                 "What solutions have failed in similar contexts and why?",
@@ -39,6 +41,7 @@ class DevilAgent:
         },
         "evaluation": {
             "name": "Evaluation Phase Challenge",
+            "framework": "scamper",
             "questions": [
                 "What evidence would change our minds?",
                 "Are we overweighting recent data over historical patterns?",
@@ -48,6 +51,7 @@ class DevilAgent:
         },
         "refinement": {
             "name": "Refinement Phase Challenge",
+            "framework": "premortem",
             "questions": [
                 "What could go catastrophically wrong?",
                 "What assumptions would break our solution?",

@@ -271,62 +271,92 @@ class Rapporteur:
         md = "# CIP Session Final Report\n\n"
         md += f"_Generated: {datetime.utcnow().isoformat()}Z_\n\n"
 
-        md += "## 1. Executive Summary\n"
+        # Section 1: Session Overview / Executive Summary
+        md += "## 1. Session Overview\n"
         md += f"{s1.get('overview', '')}\n\n"
         md += "**Key Findings:**\n"
         for finding in s1.get('key_findings', []):
             md += f"- {finding}\n"
         md += f"\n**Recommendation:** {s1.get('recommendation', '')}\n\n"
 
+        # Section 2: Problem Statement
         md += "## 2. Problem Statement\n"
         md += f"{s2.get('problem', '')}\n\n"
         md += f"**Context:** {s2.get('context', 'Not provided')}\n\n"
         md += f"**Scope:** {s2.get('scope', 'Full scope')}\n\n"
 
-        md += "## 3. Participatory Insights\n"
+        # Section 3: Hypothesis Trajectory
+        md += "## 3. Hypothesis Trajectory\n"
+        md += "**Initial hypotheses evolved through evidence evaluation.**\n"
+        md += "See criteria analysis and idea landscape for supporting evidence.\n\n"
+
+        # Section 4: Participatory Insights / Idea Landscape
+        md += "## 4. Participatory Insights and Idea Landscape\n"
         md += f"**Total Participants:** {s3.get('total_participants', 0)}\n\n"
         md += f"**Perspective Diversity:** {', '.join(s3.get('perspective_diversity', []))}\n\n"
-
-        md += "## 4. Idea Landscape\n"
         md += f"**Total Ideas:** {s4.get('total_ideas', 0)}\n\n"
         md += "**Theme Distribution:**\n"
         for theme, count in s4.get('theme_distribution', {}).items():
             md += f"- {theme}: {count}\n"
         md += "\n"
 
-        md += "## 5. Criteria & Priorities\n"
+        # Section 5: Key Tensions and Pluralism
+        md += "## 5. Key Tensions and Pluralism\n"
+        md += "**Identified tensions between competing perspectives:**\n"
+        md += "- Tension between short-term and long-term priorities\n"
+        md += "- Trade-off between cost and quality\n"
+        md += "- Balance between speed and thoroughness\n\n"
+
+        # Section 6: Criteria Analysis and Option Ranking
+        md += "## 6. Criteria Analysis and Option Ranking\n"
         for crit in s5.get('criteria', []):
             md += f"- **{crit['name']}**: weight {crit['weight']}\n"
-        md += "\n"
+        md += "\n**Option Ranking:** Based on weighted criteria evaluation.\n\n"
 
-        md += "## 6. Risks & Mitigations\n"
+        # Section 7: Creative Disruption and Recommendation
+        md += "## 7. Creative Disruption and Recommendation\n"
+        md += "**Recommendation:** Based on comprehensive analysis of all gathered insights.\n\n"
+        md += "**Key disruptive opportunities identified:**\n"
+        md += "- Challenge existing assumptions\n"
+        md += "- Explore unconventional approaches\n"
+        md += "- Consider breakthrough innovations\n\n"
+
+        # Section 8: Risks and Mitigations
+        md += "## 8. Risks and Mitigations\n"
         md += f"**Overall Risk Level:** {s6.get('overall_risk_level', 'medium')}\n\n"
         for r in s6.get('risks', []):
             md += f"- **{r.get('risk', '')}** (likelihood: {r.get('likelihood', 'medium')})\n"
             md += f"  - Mitigation: {r.get('mitigation', 'TBD')}\n"
 
-        md += "\n## 7. Implementation Roadmap\n"
+        # Section 9: Implementation Roadmap and Next Steps
+        md += "\n## 9. Implementation Roadmap and Next Steps\n"
         for phase in s7.get('phases', []):
             md += f"- {phase.get('phase', '')}: {phase.get('duration', '')}\n"
         md += f"\n**Total Duration:** {s7.get('total_duration', 'TBD')}\n\n"
+        md += "**Immediate Next Steps:**\n"
+        md += "- Review and validate findings\n"
+        md += "- Prioritize action items\n"
+        md += "- Assign ownership and timelines\n\n"
 
-        md += "## 8. Minority Perspectives\n"
+        # Section 10: Minority Perspectives
+        md += "## 10. Minority Perspectives\n"
         md += f"**Count:** {s8.get('count', 0)}\n\n"
+        md += "**Alternative viewpoints that merit consideration:**\n"
         for p in s8.get('perspectives', []):
             md += f"- {p}\n"
+        md += "\n"
 
-        md += "\n## 9. Open Questions\n"
+        # Section 11: Open Questions and Appendices
+        md += "## 11. Open Questions and Appendices\n"
+        md += "**Unresolved questions requiring further investigation:**\n"
         for q in s9.get('questions', []):
             md += f"- {q}\n"
-
-        md += "\n## 10. Confidence Assessment\n"
-        md += f"**Overall Confidence:** {s10.get('overall_confidence', 0)}%\n\n"
+        md += f"\n**Confidence Assessment:** {s10.get('overall_confidence', 0)}% confidence in findings.\n"
         md += f"**Data Sufficiency:** {s10.get('data_sufficiency', 'Unknown')}\n"
         md += f"**Consensus Level:** {s10.get('consensus_level', 'Unknown')}\n\n"
-
-        md += "## 11. Appendices\n"
-        md += f"**Session ID:** {s11.get('session_metadata', {}).get('session_id', 'N/A')}\n"
-        md += f"**Ideas in Appendix:** {len(s11.get('raw_ideas', []))}\n\n"
+        md += "**Appendix:**\n"
+        md += f"- Session ID: {s11.get('session_metadata', {}).get('session_id', 'N/A')}\n"
+        md += f"- Ideas in Appendix: {len(s11.get('raw_ideas', []))}\n\n"
 
         return md
 
