@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     max_users: int = Field(default=30)
     dev_mode: bool = Field(default=True)
     proto_mode: bool = Field(default=True)
+    proto_verbose_logging: bool = Field(default=True)
+    proto_log_to_console: bool = Field(default=True)
+    proto_log_payload_max_chars: int = Field(default=4000)
     pilot_mode: bool = Field(default=True)
     log_level: str = Field(default="DEBUG")
 

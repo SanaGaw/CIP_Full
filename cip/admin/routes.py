@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from ..config import get_settings
 from ..db import fetch_all, fetch_one
+from ..observability import log_proto, proto_logging_enabled
 
 router = APIRouter()
 
@@ -28,7 +29,12 @@ def _mask_secret(value: Any) -> str:
 @router.get("/health")
 async def health():
     """Simple health check endpoint."""
-    return {"status": "ok", "service": "cip-v2", "timestamp": datetime.utcnow().isoformat()}
+    return {
+        "status": "ok",
+        "service": "cip-v2",
+        "proto_logging_enabled": proto_logging_enabled(),
+        "timestamp": datetime.utcnow().isoformat(),
+    }
 
 
 @router.get("/admin/api/config")
@@ -41,6 +47,7 @@ async def get_config(settings=Depends(get_settings)):
             safe[key] = _mask_secret(value)
         else:
             safe[key] = value
+    safe["proto_logging_active"] = proto_logging_enabled()
     return safe
 
 
@@ -57,10 +64,12 @@ async def list_sessions(limit: int = 50):
           s.created_at,
           s.updated_at,
           COUNT(DISTINCT p.id) AS participants_count,
-          COUNT(DISTINCT m.id) AS messages_count
+          COUNT(DISTINCT m.id) AS messages_count,
+          COUNT(DISTINCT l.id) AS logs_count
         FROM sessions s
         LEFT JOIN participants p ON p.session_id = s.id
         LEFT JOIN messages m ON m.session_id = s.id
+        LEFT JOIN session_logs l ON l.session_id = s.id
         GROUP BY s.id
         ORDER BY s.created_at DESC
         LIMIT ?
@@ -79,12 +88,19 @@ async def get_telemetry():
     messages = await fetch_one("SELECT COUNT(*) AS count FROM messages")
     recent_messages = await fetch_one("SELECT COUNT(*) AS count FROM messages WHERE created_at >= ?", (since,))
     traces = await fetch_one("SELECT COUNT(*) AS count FROM traces")
+    logs = await fetch_one("SELECT COUNT(*) AS count FROM session_logs")
+    errors = await fetch_one("SELECT COUNT(*) AS count FROM session_logs WHERE level = 'ERROR'")
+    warnings = await fetch_one("SELECT COUNT(*) AS count FROM session_logs WHERE level = 'WARNING'")
     return {
         "active_sessions": active["count"] if active else 0,
         "total_participants": participants["count"] if participants else 0,
         "total_messages": messages["count"] if messages else 0,
         "messages_per_minute": recent_messages["count"] if recent_messages else 0,
         "total_traces": traces["count"] if traces else 0,
+        "total_proto_logs": logs["count"] if logs else 0,
+        "total_proto_errors": errors["count"] if errors else 0,
+        "total_proto_warnings": warnings["count"] if warnings else 0,
+        "proto_logging_enabled": proto_logging_enabled(),
         "avg_response_time_ms": 0,
         "timestamp": datetime.utcnow().isoformat(),
     }
@@ -98,9 +114,47 @@ async def get_traces(session_id: str | None = None, limit: int = 100):
             "SELECT * FROM traces WHERE session_id = ? ORDER BY created_at DESC LIMIT ?",
             (session_id, limit),
         )
+        await log_proto(
+            session_id=session_id,
+            action="admin_traces_loaded",
+            actor="admin",
+            message="Admin loaded traces for selected session",
+            payload={"limit": limit, "count": len(traces)},
+        )
     else:
         traces = await fetch_all("SELECT * FROM traces ORDER BY created_at DESC LIMIT ?", (limit,))
     return {"traces": traces, "count": len(traces)}
+
+
+@router.get("/admin/api/session-logs")
+async def get_session_logs(session_id: str | None = None, limit: int = 200, level: str | None = None):
+    """Return verbose proto logs saved in session_logs.
+
+    These records exist only when PROTO_MODE=True and PROTO_VERBOSE_LOGGING=True.
+    """
+    params: list[Any] = []
+    where: list[str] = []
+    if session_id:
+        where.append("session_id = ?")
+        params.append(session_id)
+    if level:
+        where.append("level = ?")
+        params.append(level.upper())
+    where_sql = f"WHERE {' AND '.join(where)}" if where else ""
+    params.append(limit)
+    logs = await fetch_all(
+        f"SELECT * FROM session_logs {where_sql} ORDER BY created_at DESC LIMIT ?",
+        tuple(params),
+    )
+    if session_id:
+        await log_proto(
+            session_id=session_id,
+            action="admin_proto_logs_loaded",
+            actor="admin",
+            message="Admin loaded verbose proto logs for selected session",
+            payload={"limit": limit, "level": level, "count": len(logs)},
+        )
+    return {"logs": logs, "count": len(logs), "proto_logging_enabled": proto_logging_enabled()}
 
 
 @router.get("/admin/api/report")
@@ -108,6 +162,14 @@ async def get_report(session_id: str):
     """Generate a compact JSON report for a session."""
     session = await fetch_one("SELECT * FROM sessions WHERE id = ?", (session_id,))
     if not session:
+        await log_proto(
+            session_id=session_id,
+            action="admin_report_failed",
+            actor="admin",
+            level="ERROR",
+            status="failed",
+            message="Admin report requested for missing session",
+        )
         raise HTTPException(status_code=404, detail="Session not found")
 
     ideas = await fetch_all("SELECT * FROM ideas WHERE session_id = ? ORDER BY created_at", (session_id,))
@@ -115,8 +177,11 @@ async def get_report(session_id: str):
     participants = await fetch_one("SELECT COUNT(*) AS count FROM participants WHERE session_id = ?", (session_id,))
     messages = await fetch_one("SELECT COUNT(*) AS count FROM messages WHERE session_id = ?", (session_id,))
     injections = await fetch_all("SELECT * FROM injections WHERE session_id = ? ORDER BY created_at DESC", (session_id,))
+    logs = await fetch_one("SELECT COUNT(*) AS count FROM session_logs WHERE session_id = ?", (session_id,))
+    errors = await fetch_one("SELECT COUNT(*) AS count FROM session_logs WHERE session_id = ? AND level = 'ERROR'", (session_id,))
+    warnings = await fetch_one("SELECT COUNT(*) AS count FROM session_logs WHERE session_id = ? AND level = 'WARNING'", (session_id,))
 
-    return {
+    report = {
         "session_id": session_id,
         "topic": session.get("topic"),
         "status": session.get("status"),
@@ -127,8 +192,20 @@ async def get_report(session_id: str):
         "total_ideas": len(ideas),
         "total_clusters": len(clusters),
         "recent_injections": injections[:5],
+        "proto_logs_count": logs["count"] if logs else 0,
+        "proto_errors_count": errors["count"] if errors else 0,
+        "proto_warnings_count": warnings["count"] if warnings else 0,
+        "proto_logging_enabled": proto_logging_enabled(),
         "report_generated": True,
     }
+    await log_proto(
+        session_id=session_id,
+        action="admin_report_loaded",
+        actor="admin",
+        message="Admin loaded session report",
+        payload={k: v for k, v in report.items() if k != "recent_injections"},
+    )
+    return report
 
 
 @router.get("/admin/api/transcript")
@@ -136,6 +213,14 @@ async def get_transcript(session_id: str):
     """Return the full transcript for a session."""
     session = await fetch_one("SELECT * FROM sessions WHERE id = ?", (session_id,))
     if not session:
+        await log_proto(
+            session_id=session_id,
+            action="admin_transcript_failed",
+            actor="admin",
+            level="ERROR",
+            status="failed",
+            message="Transcript requested for missing session",
+        )
         raise HTTPException(status_code=404, detail="Session not found")
 
     messages = await fetch_all(
@@ -149,6 +234,13 @@ async def get_transcript(session_id: str):
         """,
         (session_id,),
     )
+    await log_proto(
+        session_id=session_id,
+        action="admin_transcript_loaded",
+        actor="admin",
+        message="Admin loaded transcript",
+        payload={"messages_count": len(messages)},
+    )
     return {"session_id": session_id, "messages": messages, "count": len(messages)}
 
 
@@ -157,6 +249,14 @@ async def get_replay_data(session_id: str):
     """Return data suitable for the replay viewer."""
     session = await fetch_one("SELECT * FROM sessions WHERE id = ?", (session_id,))
     if not session:
+        await log_proto(
+            session_id=session_id,
+            action="admin_replay_failed",
+            actor="admin",
+            level="ERROR",
+            status="failed",
+            message="Replay requested for missing session",
+        )
         raise HTTPException(status_code=404, detail="Session not found")
 
     messages = await fetch_all(
@@ -172,6 +272,7 @@ async def get_replay_data(session_id: str):
     )
     ideas = await fetch_all("SELECT * FROM ideas WHERE session_id = ? ORDER BY created_at", (session_id,))
     traces = await fetch_all("SELECT * FROM traces WHERE session_id = ? ORDER BY created_at", (session_id,))
+    logs = await fetch_all("SELECT * FROM session_logs WHERE session_id = ? ORDER BY created_at", (session_id,))
 
     phases = [
         {"name": "clarification", "active": session.get("current_phase") == "clarification"},
@@ -187,6 +288,13 @@ async def get_replay_data(session_id: str):
         end = datetime.fromisoformat(messages[-1]["created_at"])
         duration_seconds = max(1, int((end - start).total_seconds()))
 
+    await log_proto(
+        session_id=session_id,
+        action="admin_replay_loaded",
+        actor="admin",
+        message="Admin/replay viewer loaded replay data",
+        payload={"messages_count": len(messages), "ideas_count": len(ideas), "traces_count": len(traces), "logs_count": len(logs)},
+    )
     return {
         "session_id": session_id,
         "session": session,
@@ -194,5 +302,7 @@ async def get_replay_data(session_id: str):
         "messages": messages,
         "ideas": ideas,
         "traces": traces,
+        "logs": logs,
         "duration_seconds": duration_seconds,
+        "proto_logging_enabled": proto_logging_enabled(),
     }

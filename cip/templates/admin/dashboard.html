@@ -13,7 +13,7 @@
         <div class="brand-mark">CIP</div>
         <div>
           <h1>Admin Dashboard</h1>
-          <p class="subtle">Global supervision, sessions, traces, reports and configuration.</p>
+          <p class="subtle">Global supervision, sessions, proto logs, traces, reports and configuration.</p>
         </div>
       </div>
       <div class="header-actions">
@@ -32,12 +32,19 @@
       <div class="stat-card"><span class="stat-label">Traces</span><span id="statTraces" class="stat-value">0</span></div>
     </section>
 
+    <section class="grid grid-4" style="margin-top:18px;">
+      <div class="stat-card"><span class="stat-label">Proto logs</span><span id="statLogs" class="stat-value">0</span></div>
+      <div class="stat-card"><span class="stat-label">Warnings</span><span id="statWarnings" class="stat-value">0</span></div>
+      <div class="stat-card"><span class="stat-label">Errors</span><span id="statErrors" class="stat-value">0</span></div>
+      <div class="stat-card"><span class="stat-label">Proto logging</span><span id="statProtoMode" class="stat-value small-stat">-</span></div>
+    </section>
+
     <section class="dashboard-grid" style="margin-top:18px;">
       <article class="card">
         <div class="card-title-row">
           <div>
             <h2>Recent sessions</h2>
-            <p class="subtle">Select a session to inspect report, transcript and traces.</p>
+            <p class="subtle">Select a session to inspect report, transcript, traces and proto logs.</p>
           </div>
           <span id="apiStatus" class="status offline">Checking API</span>
         </div>
@@ -59,6 +66,22 @@
           <button id="openReplay" class="btn btn-secondary">Open replay</button>
           <button id="copySession" class="btn btn-ghost">Copy session ID</button>
         </div>
+      </article>
+
+      <article class="card full-span">
+        <div class="card-title-row">
+          <div>
+            <h2>Verbose proto session logs</h2>
+            <p class="subtle">Saved only when <code>PROTO_MODE=True</code> and <code>PROTO_VERBOSE_LOGGING=True</code>.</p>
+          </div>
+          <select id="logLevelFilter" style="max-width:160px;">
+            <option value="">All levels</option>
+            <option value="INFO">INFO</option>
+            <option value="WARNING">WARNING</option>
+            <option value="ERROR">ERROR</option>
+          </select>
+        </div>
+        <div id="protoLogsList" class="traces-list"></div>
       </article>
 
       <article class="card">
@@ -110,6 +133,11 @@
       $('statParticipants').textContent = data.total_participants || 0;
       $('statMessages').textContent = data.total_messages || 0;
       $('statTraces').textContent = data.total_traces || 0;
+      $('statLogs').textContent = data.total_proto_logs || 0;
+      $('statWarnings').textContent = data.total_proto_warnings || 0;
+      $('statErrors').textContent = data.total_proto_errors || 0;
+      $('statProtoMode').textContent = data.proto_logging_enabled ? 'ON' : 'OFF';
+      $('statProtoMode').classList.toggle('text-success', !!data.proto_logging_enabled);
     }
 
     async function loadSessions() {
@@ -132,6 +160,7 @@
           <div class="session-meta">
             <span>${s.participants_count || 0} participant(s)</span>
             <span>${s.messages_count || 0} message(s)</span>
+            <span>${s.logs_count || 0} proto log(s)</span>
           </div>
         </div>
       `).join('');
@@ -145,7 +174,7 @@
       currentSessionId = sessionId;
       $('manualSessionId').value = sessionId || '';
       [...document.querySelectorAll('.session-item')].forEach(el => el.classList.toggle('selected', el.dataset.id === sessionId));
-      await Promise.all([loadReport(sessionId), loadTraces(sessionId), loadTranscript(sessionId)]);
+      await Promise.all([loadReport(sessionId), loadTraces(sessionId), loadTranscript(sessionId), loadProtoLogs(sessionId)]);
     }
 
     async function loadReport(sessionId) {
@@ -165,6 +194,7 @@
         <div class="kv"><strong>Status</strong><span>${esc(data.status || '-')}</span></div>
         <div class="kv"><strong>Participants</strong><span>${data.participants_count || 0}</span></div>
         <div class="kv"><strong>Messages</strong><span>${data.messages_count || 0}</span></div>
+        <div class="kv"><strong>Proto logs</strong><span>${data.proto_logs_count || 0} (${data.proto_warnings_count || 0} warnings, ${data.proto_errors_count || 0} errors)</span></div>
         <div class="kv"><strong>Ideas / clusters</strong><span>${data.total_ideas || 0} / ${data.total_clusters || 0}</span></div>
       `;
     }
@@ -180,6 +210,35 @@
           ${trace.reasoning ? `<div class="muted small">${esc(trace.reasoning)}</div>` : ''}
         </div>
       `).join('') : '<p class="empty-state">No traces for the selected scope.</p>';
+    }
+
+    async function loadProtoLogs(sessionId) {
+      if (!sessionId) {
+        $('protoLogsList').innerHTML = '<p class="empty-state">Select a session first.</p>';
+        return;
+      }
+      const level = $('logLevelFilter').value;
+      const url = `/admin/api/session-logs?session_id=${encodeURIComponent(sessionId)}&limit=200${level ? `&level=${encodeURIComponent(level)}` : ''}`;
+      const data = await requestJSON(url, { logs: [] });
+      const logs = data.logs || [];
+      if (!data.proto_logging_enabled && !logs.length) {
+        $('protoLogsList').innerHTML = '<p class="empty-state">Proto logging is OFF. Set PROTO_MODE=True and PROTO_VERBOSE_LOGGING=True in .env, then restart the server.</p>';
+        return;
+      }
+      $('protoLogsList').innerHTML = logs.length ? logs.map(log => `
+        <div class="trace-item log-${esc((log.level || '').toLowerCase())}">
+          <div class="trace-meta">
+            <span>${fmt(log.created_at)}</span>
+            <span class="pill primary">${esc(log.level || 'INFO')}</span>
+            <span>${esc(log.action || '-')}</span>
+            <span>${esc(log.actor || 'system')}</span>
+            <span>${esc(log.status || 'ok')}</span>
+          </div>
+          <div class="trace-description">${esc(log.message || '')}</div>
+          ${log.error ? `<details><summary>Error</summary><pre>${esc(log.error)}</pre></details>` : ''}
+          ${log.payload ? `<details><summary>Payload</summary><pre>${esc(log.payload)}</pre></details>` : ''}
+        </div>
+      `).join('') : '<p class="empty-state">No proto logs for the selected session/filter.</p>';
     }
 
     async function loadTranscript(sessionId) {
@@ -214,6 +273,7 @@
       await refreshAll();
     });
     $('loadSelectedBtn').addEventListener('click', () => selectSession($('manualSessionId').value.trim()));
+    $('logLevelFilter').addEventListener('change', () => loadProtoLogs(currentSessionId));
     $('openParticipant').addEventListener('click', () => openSessionUrl('participant'));
     $('openReplay').addEventListener('click', () => openSessionUrl('replay'));
     $('copySession').addEventListener('click', async () => {
@@ -231,7 +291,10 @@
           const data = JSON.parse(event.data);
           if (data.type === 'new_message') {
             loadTelemetry();
-            if (data.session_id === currentSessionId) loadTranscript(currentSessionId);
+            if (data.session_id === currentSessionId) {
+              loadTranscript(currentSessionId);
+              loadProtoLogs(currentSessionId);
+            }
           }
         } catch (_) {}
       };

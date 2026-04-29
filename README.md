@@ -54,3 +54,31 @@ cip/
 The UI is upgraded and the core session/message flow is usable, but the platform is still a pilot. Authentication is not enforced yet, and advanced agent logic/report generation remains incomplete.
 
 Do not deploy this version publicly without adding authentication and access control.
+
+## Proto verbose logging
+
+This branch supports conditional verbose logging for prototype sessions.
+
+Enable in `.env`:
+
+```env
+PROTO_MODE=True
+PROTO_VERBOSE_LOGGING=True
+PROTO_LOG_TO_CONSOLE=True
+PROTO_LOG_PAYLOAD_MAX_CHARS=4000
+```
+
+Disable outside prototype testing:
+
+```env
+PROTO_MODE=False
+PROTO_VERBOSE_LOGGING=False
+```
+
+Logs are stored in SQLite table `session_logs` and can be viewed from `/admin` or through:
+
+```text
+/admin/api/session-logs?session_id=YOUR_SESSION_ID
+```
+
+See `PROTO_LOGGING_GUIDE.md` for full usage.

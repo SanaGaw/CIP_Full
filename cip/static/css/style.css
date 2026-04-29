@@ -392,3 +392,25 @@ label { display: block; margin-bottom: 7px; color: var(--muted); font-weight: 75
   .message { width: 92%; }
   .chat-input-area { grid-template-columns: 1fr; }
 }
+
+/* Proto verbose logging */
+.small-stat { font-size: 1.05rem; letter-spacing: .08em; }
+.text-success { color: var(--success); }
+.trace-item details { margin-top: 8px; }
+.trace-item summary { cursor: pointer; color: var(--muted); font-weight: 750; }
+.trace-item pre {
+  margin: 8px 0 0;
+  padding: 10px;
+  max-height: 280px;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #0f172a;
+  color: #e5e7eb;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: .78rem;
+}
+.log-warning { border-left: 4px solid #f59e0b; }
+.log-error { border-left: 4px solid #ef4444; }
+.log-info { border-left: 4px solid var(--primary); }

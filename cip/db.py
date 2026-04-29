@@ -110,6 +110,28 @@ async def init_db(db_path: Optional[Path] = None) -> None:
               reasoning TEXT,
               created_at TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS session_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              session_id TEXT NOT NULL,
+              level TEXT NOT NULL DEFAULT 'INFO',
+              action TEXT NOT NULL,
+              actor TEXT NOT NULL DEFAULT 'system',
+              status TEXT NOT NULL DEFAULT 'ok',
+              message TEXT NOT NULL,
+              payload TEXT,
+              error TEXT,
+              created_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_session_logs_session_time
+              ON session_logs (session_id, created_at);
+
+            CREATE INDEX IF NOT EXISTS idx_traces_session_time
+              ON traces (session_id, created_at);
+
+            CREATE INDEX IF NOT EXISTS idx_events_session_time
+              ON events (session_id, created_at);
             """
         )
         await db.commit()

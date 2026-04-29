@@ -61,6 +61,12 @@
       <h2>Trace log</h2>
       <div id="traceList" class="traces-list"><p class="empty-state">No traces loaded.</p></div>
     </section>
+
+    <section class="card full-span" style="margin-top:18px;">
+      <h2>Verbose proto logs</h2>
+      <p class="subtle">Available only for sessions executed with PROTO_MODE=True and PROTO_VERBOSE_LOGGING=True.</p>
+      <div id="protoLogList" class="traces-list"><p class="empty-state">No proto logs loaded.</p></div>
+    </section>
   </main>
 
   <script>
@@ -90,6 +96,7 @@
         renderIdeas();
         renderPhases();
         renderTraces();
+        renderProtoLogs();
         enableControls();
       } catch (error) {
         $('loadedStatus').className = 'status offline';
@@ -166,6 +173,24 @@
           <div class="trace-description">${esc(trace.description || '')}</div>
         </div>
       `).join('') : '<p class="empty-state">No trace records for this session.</p>';
+    }
+
+    function renderProtoLogs() {
+      const logs = replayData?.logs || [];
+      $('protoLogList').innerHTML = logs.length ? logs.map(log => `
+        <div class="trace-item log-${esc((log.level || '').toLowerCase())}">
+          <div class="trace-meta">
+            <span>${fmt(log.created_at)}</span>
+            <span class="pill primary">${esc(log.level || 'INFO')}</span>
+            <span>${esc(log.action || '-')}</span>
+            <span>${esc(log.actor || 'system')}</span>
+            <span>${esc(log.status || 'ok')}</span>
+          </div>
+          <div class="trace-description">${esc(log.message || '')}</div>
+          ${log.error ? `<details><summary>Error</summary><pre>${esc(log.error)}</pre></details>` : ''}
+          ${log.payload ? `<details><summary>Payload</summary><pre>${esc(log.payload)}</pre></details>` : ''}
+        </div>
+      `).join('') : '<p class="empty-state">No proto logs for this session.</p>';
     }
 
     function enableControls() {
