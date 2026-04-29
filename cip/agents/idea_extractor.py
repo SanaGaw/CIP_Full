@@ -35,6 +35,27 @@ NARRATIVE_PATTERNS = {
     "stakes": r"(risk|critical|urgent|important|essential|must|cannot afford)",
 }
 
+def _compute_specificity(text: str) -> float:
+    """Compute specificity score (0-1) based on concrete details in text."""
+    specificity = 0.0
+    if any(c.isdigit() for c in text):
+        specificity += 0.4
+    if re.search(r"\b(weeks?|months?|years?|days?|hours?|%|€|\$)", text, re.I):
+        specificity += 0.3
+    if re.search(r"\b[A-Z][a-z]+\b", text):
+        specificity += 0.3
+    return min(1.0, specificity)
+
+
+def _compute_evidence(text: str) -> float:
+    """Compute evidence score (0-1) based on causal/factual markers."""
+    evidence = 0.0
+    if re.search(r"\b(because|since|due to|caused by|leads to|results in)\b", text, re.I):
+        evidence += 0.5
+    if re.search(r"\b(measured|observed|reported|data shows|according to)\b", text, re.I):
+        evidence += 0.5
+    return min(1.0, evidence)
+
 BIAS_SIGNALS = {
     "availability": ["recently", "last week", "just happened"],
     "sunk_cost": ["we already invested", "we've spent", "can't waste"],
@@ -60,23 +81,11 @@ def score_quality(idea: str, problem_statement: str = "", existing_clusters: Lis
     """
     from ..nlp.embeddings import embed
 
-    # specificity: presence of named entities, numbers, time refs, proper nouns
-    spec = 0.0
-    if any(c.isdigit() for c in idea):
-        spec += 0.4
-    if re.search(r"\b(weeks?|months?|years?|days?|hours?|%|€|\$)", idea, re.I):
-        spec += 0.3
-    if re.search(r"\b[A-Z][a-z]+\b", idea):
-        spec += 0.3
-    spec = min(1.0, spec)
+    # specificity: use helper function
+    spec = _compute_specificity(idea)
 
-    # evidence: causal/factual markers
-    evid = 0.0
-    if re.search(r"\b(because|since|due to|caused by|leads to|results in)\b", idea, re.I):
-        evid += 0.5
-    if re.search(r"\b(measured|observed|reported|data shows|according to)\b", idea, re.I):
-        evid += 0.5
-    evid = min(1.0, evid)
+    # evidence: use helper function
+    evid = _compute_evidence(idea)
 
     # novelty: cosine distance to nearest cluster centroid
     nov = 0.5

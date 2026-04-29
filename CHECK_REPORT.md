@@ -1,12 +1,12 @@
 # CIP v2.0 — Feature Audit Report
-_Generated: 2026-04-29T00:34:24.172522Z_
+_Generated: 2026-04-29T00:41:17.795280Z_
 
 ## Summary
 - Total checks: **95**
-- ✅ PASS:  **77**
-- ⚠️ STUB:  **18**  (exists but not real)
+- ✅ PASS:  **78**
+- ⚠️ STUB:  **17**  (exists but not real)
 - ❌ FAIL:  **0**  (missing or broken)
-- **Implementation completeness: 81%**
+- **Implementation completeness: 82%**
 
 ## Results by category
 
@@ -100,12 +100,12 @@ _Generated: 2026-04-29T00:34:24.172522Z_
 | core_logic | ✅ PASS |  |
 | real_cycle_detection | ⚠️ STUB | naive cycle = no Condorcet winner |
 
-### EXTRACTOR  (4/6)
+### EXTRACTOR  (5/6)
 
 | Check | Status | Evidence |
 |---|---|---|
 | spacy_analysis | ✅ PASS |  |
-| quality_specificity | ⚠️ STUB | specificity hardcoded |
+| quality_specificity | ✅ PASS |  |
 | quality_evidence | ⚠️ STUB | evidence hardcoded to 0.5 |
 | quality_novelty_relevance | ✅ PASS |  |
 | narrative_parsing | ✅ PASS |  |
@@ -220,10 +220,10 @@ _Generated: 2026-04-29T00:34:24.172522Z_
 {
   "summary": {
     "total": 95,
-    "pass": 77,
-    "stub": 18,
+    "pass": 78,
+    "stub": 17,
     "fail": 0,
-    "pct": 81
+    "pct": 82
   },
   "fails": [],
   "stubs": [
@@ -235,7 +235,6 @@ _Generated: 2026-04-29T00:34:24.172522Z_
     "implementation",
     "real_cycle_detection",
     "implementation",
-    "quality_specificity",
     "quality_evidence",
     "synthetic_idea_ratio",
     "died_unfairly",
