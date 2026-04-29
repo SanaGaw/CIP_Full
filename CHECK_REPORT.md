@@ -1,12 +1,12 @@
 # CIP v2.0 — Feature Audit Report
-_Generated: 2026-04-29T00:16:51.997206Z_
+_Generated: 2026-04-29T00:21:18.279564Z_
 
 ## Summary
 - Total checks: **94**
-- ✅ PASS:  **51**
-- ⚠️ STUB:  **21**  (exists but not real)
-- ❌ FAIL:  **22**  (missing or broken)
-- **Implementation completeness: 54%**
+- ✅ PASS:  **53**
+- ⚠️ STUB:  **20**  (exists but not real)
+- ❌ FAIL:  **21**  (missing or broken)
+- **Implementation completeness: 56%**
 
 ## Results by category
 
@@ -99,14 +99,14 @@ _Generated: 2026-04-29T00:16:51.997206Z_
 | core_logic | ✅ PASS |  |
 | real_cycle_detection | ⚠️ STUB | naive cycle = no Condorcet winner |
 
-### EXTRACTOR  (3/6)
+### EXTRACTOR  (4/6)
 
 | Check | Status | Evidence |
 |---|---|---|
 | spacy_analysis | ✅ PASS |  |
 | quality_specificity | ⚠️ STUB | specificity hardcoded |
 | quality_evidence | ⚠️ STUB | evidence hardcoded to 0.5 |
-| quality_novelty_relevance | ⚠️ STUB | hardcoded to 0.5 |
+| quality_novelty_relevance | ✅ PASS |  |
 | narrative_parsing | ✅ PASS |  |
 | bias_signals | ✅ PASS |  |
 
@@ -208,21 +208,21 @@ _Generated: 2026-04-29T00:16:51.997206Z_
 | facilitator_dashboard | ⚠️ STUB | only 12 lines, skeleton |
 | replay_session | ⚠️ STUB | only 13 lines, skeleton |
 
-### TESTS  (0/1)
+### TESTS  (1/1)
 
 | Check | Status | Evidence |
 |---|---|---|
-| pytest_run | ❌ FAIL | no tests passed; output:  |
+| pytest_run | ✅ PASS | 10 passed, 0 failed |
 
 ## Compact JSON (for paste-back to Claude)
 ```json
 {
   "summary": {
     "total": 94,
-    "pass": 51,
-    "stub": 21,
-    "fail": 22,
-    "pct": 54
+    "pass": 53,
+    "stub": 20,
+    "fail": 21,
+    "pct": 56
   },
   "fails": [
     "mode_REFLECT",
@@ -245,8 +245,7 @@ _Generated: 2026-04-29T00:16:51.997206Z_
     "stress_test",
     "11_section_report",
     "json_output",
-    "imports_cleanly",
-    "pytest_run"
+    "imports_cleanly"
   ],
   "stubs": [
     "mode_LISTEN",
@@ -261,7 +260,6 @@ _Generated: 2026-04-29T00:16:51.997206Z_
     "implementation",
     "quality_specificity",
     "quality_evidence",
-    "quality_novelty_relevance",
     "synthetic_idea_ratio",
     "died_unfairly",
     "endpoints_coverage",

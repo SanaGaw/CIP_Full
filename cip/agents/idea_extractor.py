@@ -51,26 +51,80 @@ def extract_ideas(text: str) -> List[str]:
     return [sent.strip() for sent in re.split(r"[.?!]\s+", text) if sent.strip()]
 
 
-def score_quality(idea: str, problem_statement: str = "") -> float:
+def score_quality(idea: str, problem_statement: str = "", existing_clusters: List[Dict] = None) -> float:
     """Compute a quality score (0-1) for an idea.
 
-    This placeholder implementation uses simple heuristics based on length and
-    presence of numeric tokens. Replace with more sophisticated analysis.
+    Computes all 5 dimensions: specificity, evidence, novelty, relevance, depth.
+    Uses embeddings for novelty (cosine distance to cluster centroids) and relevance
+    (similarity to problem statement).
     """
-    length_score = min(len(idea) / 100, 1.0)
-    specificity = 1.0 if any(char.isdigit() for char in idea) else 0.5
-    evidence = 0.5
-    novelty = 0.5
-    relevance = 0.5
-    depth = length_score
-    weighted = (
-        QUALITY_WEIGHTS["specificity"] * specificity
-        + QUALITY_WEIGHTS["evidence"] * evidence
-        + QUALITY_WEIGHTS["novelty"] * novelty
-        + QUALITY_WEIGHTS["relevance"] * relevance
+    from ..nlp.embeddings import embed
+
+    # specificity: presence of named entities, numbers, time refs, proper nouns
+    spec = 0.0
+    if any(c.isdigit() for c in idea):
+        spec += 0.4
+    if re.search(r"\b(weeks?|months?|years?|days?|hours?|%|€|\$)", idea, re.I):
+        spec += 0.3
+    if re.search(r"\b[A-Z][a-z]+\b", idea):
+        spec += 0.3
+    spec = min(1.0, spec)
+
+    # evidence: causal/factual markers
+    evid = 0.0
+    if re.search(r"\b(because|since|due to|caused by|leads to|results in)\b", idea, re.I):
+        evid += 0.5
+    if re.search(r"\b(measured|observed|reported|data shows|according to)\b", idea, re.I):
+        evid += 0.5
+    evid = min(1.0, evid)
+
+    # novelty: cosine distance to nearest cluster centroid
+    nov = 0.5
+    if existing_clusters:
+        try:
+            emb = embed(idea)
+            sims = []
+            for c in existing_clusters:
+                if c.get("centroid") is not None:
+                    centroid = np.array(c["centroid"])
+                    norm_emb = np.linalg.norm(emb)
+                    norm_cent = np.linalg.norm(centroid)
+                    if norm_emb > 0 and norm_cent > 0:
+                        sim = float(np.dot(emb, centroid) / (norm_emb * norm_cent))
+                        sims.append(sim)
+            if sims:
+                nov = 1.0 - max(sims)
+        except Exception:
+            nov = 0.5
+
+    # relevance: similarity to problem statement
+    rel = 0.5
+    if problem_statement:
+        try:
+            e1 = embed(idea)
+            e2 = embed(problem_statement)
+            norm1 = np.linalg.norm(e1)
+            norm2 = np.linalg.norm(e2)
+            if norm1 > 0 and norm2 > 0:
+                rel = float(np.dot(e1, e2) / (norm1 * norm2))
+                rel = max(0.0, min(1.0, rel))
+        except Exception:
+            rel = 0.5
+
+    # depth: word count + clause count
+    words = len(idea.split())
+    clauses = len(re.split(r"[,;:]|\b(and|but|because|while|although)\b", idea))
+    depth = min(1.0, (words / 30) * 0.6 + (clauses / 4) * 0.4)
+
+    # weighted sum
+    score = (
+        QUALITY_WEIGHTS["specificity"] * spec
+        + QUALITY_WEIGHTS["evidence"] * evid
+        + QUALITY_WEIGHTS["novelty"] * nov
+        + QUALITY_WEIGHTS["relevance"] * rel
         + QUALITY_WEIGHTS["depth"] * depth
     )
-    return round(weighted, 2)
+    return round(score, 3)
 
 
 def parse_narrative_elements(text: str) -> Dict[str, List[str]]:
