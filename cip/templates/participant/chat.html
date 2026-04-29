@@ -1,103 +1,161 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Participant Chat</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CIP Participant Room</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
-    <div class="chat-container">
-        <header class="chat-header">
-            <h1>CIP Session</h1>
-            <span id="statusIndicator" class="status offline">Connecting...</span>
-        </header>
+  <main class="chat-container">
+    <header class="chat-header">
+      <div class="brand">
+        <div class="brand-mark">YOU</div>
+        <div>
+          <h1>Participant Room</h1>
+          <p class="subtle">Contribute ideas anonymously or with your generated participant ID.</p>
+        </div>
+      </div>
+      <div class="chat-actions">
+        <a class="nav-pill" href="/facilitator">Facilitator</a>
+        <a class="nav-pill" href="/admin">Admin</a>
+        <span id="statusIndicator" class="status offline">Disconnected</span>
+      </div>
+    </header>
+
+    <section class="chat-layout">
+      <article class="chat-panel">
         <div id="chatMessages" class="chat-messages"></div>
         <div class="chat-input-area">
-            <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off" />
-            <button id="sendButton">Send</button>
+          <input type="text" id="messageInput" placeholder="Write your idea, concern, assumption or proposal..." autocomplete="off" />
+          <button id="sendButton">Send</button>
         </div>
-    </div>
+      </article>
 
-    <script>
-        const sessionId = new URLSearchParams(window.location.search).get('session_id') || 'default-session';
-        const participantId = localStorage.getItem('participant_id') || 'P' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('participant_id', participantId);
+      <aside class="helper-panel">
+        <h2>Join information</h2>
+        <div class="form-row">
+          <label for="sessionIdInput">Session ID</label>
+          <input id="sessionIdInput" placeholder="Paste session_id here" />
+        </div>
+        <div class="form-row">
+          <label for="participantIdInput">Your participant ID</label>
+          <input id="participantIdInput" />
+        </div>
+        <button id="reconnectBtn" class="btn btn-primary" style="width:100%;">Connect / reconnect</button>
+        <hr style="border:0;border-top:1px solid var(--line);margin:18px 0;" />
+        <h2>Helpful prompts</h2>
+        <div class="quick-prompts">
+          <button class="btn btn-ghost" data-prompt="I think the main problem is: ">Clarify the problem</button>
+          <button class="btn btn-ghost" data-prompt="One possible solution is: ">Suggest a solution</button>
+          <button class="btn btn-ghost" data-prompt="A hidden risk is: ">Add a risk</button>
+          <button class="btn btn-ghost" data-prompt="The KPI we should follow is: ">Propose a KPI</button>
+        </div>
+        <p class="subtle small" style="margin-top:16px;">Tip: ask the facilitator for the session link. The URL normally looks like <span class="code-chip">/participant?session_id=...</span></p>
+      </aside>
+    </section>
+  </main>
 
-        let ws = null;
-        const messages = [];
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 
-        function connect() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//${window.location.host}/ws/${sessionId}/${participantId}`);
+    let sessionId = new URLSearchParams(window.location.search).get('session_id') || localStorage.getItem('cip_session_id') || 'default-session';
+    let participantId = localStorage.getItem('cip_participant_id') || 'P-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+    let ws = null;
 
-            ws.onopen = () => {
-                document.getElementById('statusIndicator').className = 'status online';
-                document.getElementById('statusIndicator').textContent = 'Connected';
-            };
+    $('sessionIdInput').value = sessionId;
+    $('participantIdInput').value = participantId;
+    localStorage.setItem('cip_session_id', sessionId);
+    localStorage.setItem('cip_participant_id', participantId);
 
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === 'message') {
-                    addMessage(data.participant_id, data.text, data.timestamp);
-                }
-            };
+    function addMessage(sender, text, timestamp, kind = 'received') {
+      const messagesDiv = $('chatMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${kind}`;
+      messageDiv.innerHTML = `
+        <div class="message-header">
+          <span class="participant">${esc(sender)}</span>
+          <span class="timestamp">${timestamp ? new Date(timestamp).toLocaleTimeString() : ''}</span>
+        </div>
+        <div class="message-text">${esc(text)}</div>
+      `;
+      messagesDiv.appendChild(messageDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
 
-            ws.onclose = () => {
-                document.getElementById('statusIndicator').className = 'status offline';
-                document.getElementById('statusIndicator').textContent = 'Disconnected';
-                setTimeout(connect, 3000);
-            };
+    function setStatus(online, text) {
+      $('statusIndicator').className = online ? 'status online' : 'status offline';
+      $('statusIndicator').textContent = text;
+    }
 
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
+    function connect() {
+      if (ws) ws.close();
+      sessionId = $('sessionIdInput').value.trim() || 'default-session';
+      participantId = $('participantIdInput').value.trim() || participantId;
+      localStorage.setItem('cip_session_id', sessionId);
+      localStorage.setItem('cip_participant_id', participantId);
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${window.location.host}/ws/${encodeURIComponent(sessionId)}/${encodeURIComponent(participantId)}`);
+
+      ws.onopen = () => {
+        setStatus(true, 'Connected');
+        addMessage('system', `Connected to session ${sessionId}`, new Date().toISOString(), 'system');
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'message') {
+          const kind = data.participant_id === participantId ? 'sent' : 'received';
+          addMessage(data.participant_id, data.text, data.timestamp || data.created_at, kind);
+        } else if (data.type === 'system') {
+          addMessage('system', data.text || 'System message', new Date().toISOString(), 'system');
         }
+      };
 
-        function addMessage(participantId, text, timestamp) {
-            const messagesDiv = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${participantId === window.participantId ? 'sent' : 'received'}`;
-            messageDiv.innerHTML = `
-                <div class="message-header">
-                    <span class="participant">${participantId}</span>
-                    <span class="timestamp">${new Date(timestamp).toLocaleTimeString()}</span>
-                </div>
-                <div class="message-text">${text}</div>
-            `;
-            messagesDiv.appendChild(messageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            messages.push({ participantId, text, timestamp });
-        }
+      ws.onclose = () => {
+        setStatus(false, 'Disconnected');
+      };
 
-        async function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const text = input.value.trim();
-            if (!text) return;
+      ws.onerror = () => {
+        setStatus(false, 'Connection error');
+      };
+    }
 
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({
-                    type: 'message',
-                    text: text,
-                    participant_id: participantId,
-                    timestamp: new Date().toISOString()
-                }));
-            } else {
-                await fetch(`/api/session/${sessionId}/message`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text, participant_id: participantId })
-                });
-            }
-            input.value = '';
-        }
+    async function sendMessage() {
+      const input = $('messageInput');
+      const text = input.value.trim();
+      if (!text) return;
+      const payload = { type: 'message', text, participant_id: participantId, timestamp: new Date().toISOString() };
 
-        document.getElementById('sendButton').addEventListener('click', sendMessage);
-        document.getElementById('messageInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(payload));
+      } else {
+        await fetch(`/api/session/${encodeURIComponent(sessionId)}/message`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
+        addMessage(participantId, text, payload.timestamp, 'sent');
+      }
+      input.value = '';
+      input.focus();
+    }
 
-        connect();
-    </script>
+    $('sendButton').addEventListener('click', sendMessage);
+    $('messageInput').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.shiftKey) sendMessage();
+    });
+    $('reconnectBtn').addEventListener('click', connect);
+    document.querySelectorAll('[data-prompt]').forEach(button => {
+      button.addEventListener('click', () => {
+        $('messageInput').value = button.dataset.prompt;
+        $('messageInput').focus();
+      });
+    });
+
+    connect();
+  </script>
 </body>
 </html>

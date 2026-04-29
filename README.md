@@ -1,45 +1,56 @@
 # Collective Intelligence Platform v2 (CIP v2)
 
-This repository contains a pilot implementation of the Collective Intelligence Platform (CIP) version 2. The goal of CIP is to enable cross‑functional groups to deliberate on complex organizational questions through a structured, multi‑phase process. Participants contribute anonymously, ideas are extracted and clustered, tensions are surfaced, and a structured advisory report is produced at the end.
+CIP v2 is a pilot FastAPI application for running structured collective-intelligence sessions. It provides four web interfaces:
 
-## Architecture
+- `/admin` — operator dashboard for monitoring sessions, traces, reports and configuration.
+- `/facilitator` — workshop control panel for creating sessions, moving phases and injecting prompts.
+- `/participant?session_id=...` — participant contribution room.
+- `/replay?session_id=...` — replay and review page for session timelines.
 
-The application is built using **Python 3.11**, **FastAPI**, **WebSockets**, and **SQLite**. A tiered LLM router abstracts multiple providers (Anthropic, OpenRouter, Gemini, Groq) and local NLP components (spaCy, sentence‑transformers, scikit‑learn) handle idea extraction, clustering and diversity metrics. Observability is built in via a structured trace system.
+## Quick start
 
-This pilot focuses on debuggability and observability over feature completeness. Many components are stubs that log their actions rather than implementing the full logic described in the build specification.
+```bash
+pip install -r requirements.txt
+copy .env.example .env      # Windows
+# cp .env.example .env      # Linux/macOS
+uvicorn cip.main:app --reload
+```
 
-## Getting Started
+Open:
 
-1. Clone this repository and navigate into the `cip_v2` directory.
-2. Copy `.env.example` to `.env` and set any API keys or secrets as needed.
-3. Install dependencies:
+```text
+http://localhost:8000/facilitator
+```
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+Create a session, copy the generated participant link, and share it with users.
 
-4. Run the application:
+## UI guide
 
-   ```bash
-   uvicorn cip.main:app --reload
-   ```
+Read the full guide here:
 
-5. Open your browser at `http://localhost:8000` to verify the API is running.
+```text
+UI_ACCESS_GUIDE.md
+```
 
-## Project Structure
+It explains how to access each interface and how to use each main parameter.
 
-- `cip/` – core application code (configuration, database, agents, engines, NLP, etc.)
-- `tests/` – pytest-based unit tests
-- `static/` – minimal CSS and JavaScript assets
-- `templates/` – Jinja2 HTML templates for admin, facilitator, participant and replay views
-- `.env.example` – sample environment configuration
-- `Dockerfile` – container definition for deployment
-- `railway.toml` – deployment configuration for Railway
+## Project structure
 
-## Limitations
+```text
+cip/
+  admin/            Admin API routes
+  facilitator/      Facilitator API routes
+  agents/           Agent and orchestration stubs
+  engines/          Decision and criteria engines
+  llm/              LLM clients and tier routing
+  nlp/              NLP utilities
+  static/css/       Shared UI styling
+  templates/        Admin, facilitator, participant and replay pages
+  websocket/        WebSocket connection manager
+```
 
-This pilot does not implement the full functionality described in the build prompt. Many modules contain placeholder functions or stubs that should be replaced with real logic. The LLM clients return stub responses; bridging and orchestrator logic are highly simplified; UI templates are placeholders. Use this project as a starting point for further development.
+## Important pilot limitation
 
-## License
+The UI is upgraded and the core session/message flow is usable, but the platform is still a pilot. Authentication is not enforced yet, and advanced agent logic/report generation remains incomplete.
 
-This project is provided as-is for demonstration purposes.
+Do not deploy this version publicly without adding authentication and access control.

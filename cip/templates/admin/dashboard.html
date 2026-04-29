@@ -1,164 +1,250 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CIP Admin Dashboard</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
-    <div class="dashboard-container">
-        <header class="dashboard-header">
-            <h1>Operator Dashboard</h1>
-            <div class="header-actions">
-                <button id="refreshBtn" class="btn">Refresh</button>
-                <select id="sessionSelect">
-                    <option value="">Select Session</option>
-                </select>
-            </div>
-        </header>
-
-        <div class="dashboard-grid">
-            <div class="card telemetry-card">
-                <h2>System Telemetry</h2>
-                <div id="telemetryData" class="metrics-grid"></div>
-            </div>
-
-            <div class="card traces-card">
-                <h2>Recent Traces</h2>
-                <div id="tracesList" class="traces-list"></div>
-            </div>
-
-            <div class="card report-card">
-                <h2>Session Report</h2>
-                <div id="reportData" class="report-preview"></div>
-                <button id="downloadReport" class="btn btn-primary">Download Report</button>
-            </div>
+  <main class="dashboard-container">
+    <header class="dashboard-header">
+      <div class="brand">
+        <div class="brand-mark">CIP</div>
+        <div>
+          <h1>Admin Dashboard</h1>
+          <p class="subtle">Global supervision, sessions, traces, reports and configuration.</p>
         </div>
-    </div>
+      </div>
+      <div class="header-actions">
+        <a class="nav-pill active" href="/admin">Admin</a>
+        <a class="nav-pill" href="/facilitator">Facilitator</a>
+        <a class="nav-pill" href="/participant">Participant</a>
+        <a class="nav-pill" href="/replay">Replay</a>
+        <button id="refreshBtn" class="btn btn-primary">Refresh</button>
+      </div>
+    </header>
 
-    <script>
-        let currentSessionId = null;
-        let ws = null;
+    <section class="grid grid-4">
+      <div class="stat-card"><span class="stat-label">Active sessions</span><span id="statActive" class="stat-value">0</span></div>
+      <div class="stat-card"><span class="stat-label">Participants</span><span id="statParticipants" class="stat-value">0</span></div>
+      <div class="stat-card"><span class="stat-label">Messages</span><span id="statMessages" class="stat-value">0</span></div>
+      <div class="stat-card"><span class="stat-label">Traces</span><span id="statTraces" class="stat-value">0</span></div>
+    </section>
 
-        async function loadTelemetry() {
-            try {
-                const response = await fetch('/admin/api/telemetry');
-                const data = await response.json();
-                renderTelemetry(data);
-            } catch (error) {
-                console.error('Failed to load telemetry:', error);
-            }
-        }
+    <section class="dashboard-grid" style="margin-top:18px;">
+      <article class="card">
+        <div class="card-title-row">
+          <div>
+            <h2>Recent sessions</h2>
+            <p class="subtle">Select a session to inspect report, transcript and traces.</p>
+          </div>
+          <span id="apiStatus" class="status offline">Checking API</span>
+        </div>
+        <div id="sessionList" class="session-list" style="margin-top:14px;"></div>
+      </article>
 
-        function renderTelemetry(data) {
-            const container = document.getElementById('telemetryData');
-            container.innerHTML = `
-                <div class="metric">
-                    <span class="metric-label">Active Sessions</span>
-                    <span class="metric-value">${data.active_sessions || 0}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Total Participants</span>
-                    <span class="metric-value">${data.total_participants || 0}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Messages/min</span>
-                    <span class="metric-value">${data.messages_per_minute || 0}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Avg Response</span>
-                    <span class="metric-value">${data.avg_response_time_ms || 0}ms</span>
-                </div>
-            `;
-        }
+      <article class="card">
+        <h2>Selected session</h2>
+        <div class="form-row">
+          <label for="manualSessionId">Session ID</label>
+          <div class="copy-field">
+            <input id="manualSessionId" placeholder="Paste or select a session ID" />
+            <button class="btn" id="loadSelectedBtn">Load</button>
+          </div>
+        </div>
+        <div id="reportData" class="report-summary"></div>
+        <div class="control-buttons" style="margin-top:14px;">
+          <button id="openParticipant" class="btn btn-primary">Open participant link</button>
+          <button id="openReplay" class="btn btn-secondary">Open replay</button>
+          <button id="copySession" class="btn btn-ghost">Copy session ID</button>
+        </div>
+      </article>
 
-        async function loadTraces(sessionId) {
-            try {
-                const url = sessionId ? `/admin/api/traces?session_id=${sessionId}` : '/admin/api/traces';
-                const response = await fetch(url);
-                const data = await response.json();
-                renderTraces(data.traces);
-            } catch (error) {
-                console.error('Failed to load traces:', error);
-            }
-        }
+      <article class="card">
+        <h2>Recent traces</h2>
+        <div id="tracesList" class="traces-list"></div>
+      </article>
 
-        function renderTraces(traces) {
-            const container = document.getElementById('tracesList');
-            if (!traces || traces.length === 0) {
-                container.innerHTML = '<p class="empty-state">No traces available</p>';
-                return;
-            }
-            container.innerHTML = traces.slice(0, 20).map(trace => `
-                <div class="trace-item">
-                    <span class="trace-time">${new Date(trace.created_at).toLocaleTimeString()}</span>
-                    <span class="trace-agent">${trace.agent || 'system'}</span>
-                    <span class="trace-event">${trace.event || 'event'}</span>
-                </div>
-            `).join('');
-        }
+      <article class="card">
+        <h2>Transcript preview</h2>
+        <div id="transcriptBox" class="transcript-box"></div>
+      </article>
 
-        async function loadReport(sessionId) {
-            if (!sessionId) {
-                document.getElementById('reportData').innerHTML = '<p class="empty-state">Select a session</p>';
-                return;
-            }
-            try {
-                const response = await fetch(`/admin/api/report?session_id=${sessionId}`);
-                const data = await response.json();
-                renderReport(data);
-            } catch (error) {
-                console.error('Failed to load report:', error);
-            }
-        }
+      <article class="card full-span">
+        <h2>Safe configuration view</h2>
+        <p class="subtle">Secrets are masked. Edit real values in your `.env` file.</p>
+        <div id="configList" class="config-list" style="margin-top:14px;"></div>
+      </article>
+    </section>
+  </main>
 
-        function renderReport(data) {
-            const container = document.getElementById('reportData');
-            container.innerHTML = `
-                <div class="report-summary">
-                    <p><strong>Status:</strong> ${data.status || 'N/A'}</p>
-                    <p><strong>Total Ideas:</strong> ${data.total_ideas || 0}</p>
-                    <p><strong>Total Clusters:</strong> ${data.total_clusters || 0}</p>
-                </div>
-            `;
-        }
+  <script>
+    let currentSessionId = new URLSearchParams(window.location.search).get('session_id') || null;
+    let sessions = [];
 
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//${window.location.host}/ws/admin`);
+    const $ = (id) => document.getElementById(id);
+    const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    const fmt = (value) => value ? new Date(value).toLocaleString() : '-';
 
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === 'telemetry_update') {
-                    renderTelemetry(data);
-                } else if (data.type === 'new_trace') {
-                    loadTraces(currentSessionId);
-                }
-            };
-        }
+    async function requestJSON(url, fallback = null) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(await response.text());
+        return await response.json();
+      } catch (error) {
+        console.error(url, error);
+        return fallback;
+      }
+    }
 
-        document.getElementById('refreshBtn').addEventListener('click', () => {
+    async function loadHealth() {
+      const data = await requestJSON('/health');
+      $('apiStatus').className = data?.status === 'ok' ? 'status online' : 'status offline';
+      $('apiStatus').textContent = data?.status === 'ok' ? 'API online' : 'API offline';
+    }
+
+    async function loadTelemetry() {
+      const data = await requestJSON('/admin/api/telemetry', {});
+      $('statActive').textContent = data.active_sessions || 0;
+      $('statParticipants').textContent = data.total_participants || 0;
+      $('statMessages').textContent = data.total_messages || 0;
+      $('statTraces').textContent = data.total_traces || 0;
+    }
+
+    async function loadSessions() {
+      const data = await requestJSON('/admin/api/sessions', { sessions: [] });
+      sessions = data.sessions || [];
+      const container = $('sessionList');
+      if (!sessions.length) {
+        container.innerHTML = '<p class="empty-state">No sessions yet. Create one from the Facilitator dashboard.</p>';
+        return;
+      }
+      container.innerHTML = sessions.map(s => `
+        <div class="session-item ${s.id === currentSessionId ? 'selected' : ''}" data-id="${esc(s.id)}">
+          <div class="session-title">${esc(s.topic || 'Untitled session')}</div>
+          <div class="session-meta">
+            <span class="pill primary">${esc(s.current_phase || '-')}</span>
+            <span>${esc(s.status || '-')}</span>
+            <span>${esc((s.id || '').slice(0, 8))}...</span>
+            <span>${fmt(s.created_at)}</span>
+          </div>
+          <div class="session-meta">
+            <span>${s.participants_count || 0} participant(s)</span>
+            <span>${s.messages_count || 0} message(s)</span>
+          </div>
+        </div>
+      `).join('');
+      [...container.querySelectorAll('.session-item')].forEach(item => {
+        item.addEventListener('click', () => selectSession(item.dataset.id));
+      });
+      if (!currentSessionId && sessions[0]) selectSession(sessions[0].id);
+    }
+
+    async function selectSession(sessionId) {
+      currentSessionId = sessionId;
+      $('manualSessionId').value = sessionId || '';
+      [...document.querySelectorAll('.session-item')].forEach(el => el.classList.toggle('selected', el.dataset.id === sessionId));
+      await Promise.all([loadReport(sessionId), loadTraces(sessionId), loadTranscript(sessionId)]);
+    }
+
+    async function loadReport(sessionId) {
+      const container = $('reportData');
+      if (!sessionId) {
+        container.innerHTML = '<p class="empty-state">Select a session first.</p>';
+        return;
+      }
+      const data = await requestJSON(`/admin/api/report?session_id=${encodeURIComponent(sessionId)}`);
+      if (!data) {
+        container.innerHTML = '<p class="empty-state">Report unavailable for this session.</p>';
+        return;
+      }
+      container.innerHTML = `
+        <div class="kv"><strong>Topic</strong><span>${esc(data.topic || 'Untitled')}</span></div>
+        <div class="kv"><strong>Phase</strong><span>${esc(data.phase || '-')}</span></div>
+        <div class="kv"><strong>Status</strong><span>${esc(data.status || '-')}</span></div>
+        <div class="kv"><strong>Participants</strong><span>${data.participants_count || 0}</span></div>
+        <div class="kv"><strong>Messages</strong><span>${data.messages_count || 0}</span></div>
+        <div class="kv"><strong>Ideas / clusters</strong><span>${data.total_ideas || 0} / ${data.total_clusters || 0}</span></div>
+      `;
+    }
+
+    async function loadTraces(sessionId) {
+      const url = sessionId ? `/admin/api/traces?session_id=${encodeURIComponent(sessionId)}` : '/admin/api/traces';
+      const data = await requestJSON(url, { traces: [] });
+      const traces = data.traces || [];
+      $('tracesList').innerHTML = traces.length ? traces.slice(0, 30).map(trace => `
+        <div class="trace-item">
+          <div class="trace-meta"><span>${fmt(trace.created_at)}</span><span class="pill primary">${esc(trace.trace_type || 'trace')}</span><span>${esc(trace.actor || 'system')}</span></div>
+          <div class="trace-description">${esc(trace.description || 'No description')}</div>
+          ${trace.reasoning ? `<div class="muted small">${esc(trace.reasoning)}</div>` : ''}
+        </div>
+      `).join('') : '<p class="empty-state">No traces for the selected scope.</p>';
+    }
+
+    async function loadTranscript(sessionId) {
+      if (!sessionId) {
+        $('transcriptBox').innerHTML = '<p class="empty-state">Select a session first.</p>';
+        return;
+      }
+      const data = await requestJSON(`/admin/api/transcript?session_id=${encodeURIComponent(sessionId)}`, { messages: [] });
+      const messages = data.messages || [];
+      $('transcriptBox').innerHTML = messages.length ? messages.slice(-12).map(msg => `
+        <div class="message-item">
+          <div class="message-header"><span>${fmt(msg.created_at)}</span><span class="pill">${esc(msg.participant_id)}</span></div>
+          <div class="message-text">${esc(msg.text)}</div>
+        </div>
+      `).join('') : '<p class="empty-state">No participant messages yet.</p>';
+    }
+
+    async function loadConfig() {
+      const data = await requestJSON('/admin/api/config', {});
+      $('configList').innerHTML = Object.entries(data).map(([key, value]) => `
+        <div class="config-item"><div class="kv"><strong>${esc(key)}</strong><span>${esc(value)}</span></div></div>
+      `).join('');
+    }
+
+    function openSessionUrl(kind) {
+      if (!currentSessionId) return alert('Select a session first.');
+      const path = kind === 'participant' ? `/participant?session_id=${encodeURIComponent(currentSessionId)}` : `/replay?session_id=${encodeURIComponent(currentSessionId)}`;
+      window.open(path, '_blank');
+    }
+
+    $('refreshBtn').addEventListener('click', async () => {
+      await refreshAll();
+    });
+    $('loadSelectedBtn').addEventListener('click', () => selectSession($('manualSessionId').value.trim()));
+    $('openParticipant').addEventListener('click', () => openSessionUrl('participant'));
+    $('openReplay').addEventListener('click', () => openSessionUrl('replay'));
+    $('copySession').addEventListener('click', async () => {
+      if (!currentSessionId) return alert('Select a session first.');
+      await navigator.clipboard.writeText(currentSessionId);
+      $('copySession').textContent = 'Copied';
+      setTimeout(() => $('copySession').textContent = 'Copy session ID', 1200);
+    });
+
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(`${protocol}//${window.location.host}/ws/admin`);
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'new_message') {
             loadTelemetry();
-            loadTraces(currentSessionId);
-            loadReport(currentSessionId);
-        });
+            if (data.session_id === currentSessionId) loadTranscript(currentSessionId);
+          }
+        } catch (_) {}
+      };
+    }
 
-        document.getElementById('sessionSelect').addEventListener('change', (e) => {
-            currentSessionId = e.target.value;
-            loadTraces(currentSessionId);
-            loadReport(currentSessionId);
-        });
+    async function refreshAll() {
+      await Promise.all([loadHealth(), loadTelemetry(), loadConfig()]);
+      await loadSessions();
+      if (currentSessionId) await selectSession(currentSessionId);
+    }
 
-        document.getElementById('downloadReport').addEventListener('click', () => {
-            if (currentSessionId) {
-                window.open(`/admin/api/report?session_id=${currentSessionId}&format=pdf`, '_blank');
-            }
-        });
-
-        loadTelemetry();
-        loadTraces(null);
-        connectWebSocket();
-    </script>
+    refreshAll();
+    connectWebSocket();
+  </script>
 </body>
 </html>

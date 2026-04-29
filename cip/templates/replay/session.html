@@ -1,202 +1,237 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Session Replay</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CIP Session Replay</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
-    <div class="replay-container">
-        <header class="replay-header">
-            <h1>Session Replay</h1>
-            <div class="replay-controls">
-                <input type="text" id="sessionIdInput" placeholder="Enter Session ID" />
-                <button id="loadSession" class="btn">Load</button>
-            </div>
-        </header>
-
-        <div class="timeline-container">
-            <div id="timeline" class="timeline"></div>
-            <div class="playback-controls">
-                <button id="playBtn" class="btn btn-play" disabled>Play</button>
-                <button id="pauseBtn" class="btn btn-pause" disabled>Pause</button>
-                <input type="range" id="seekBar" min="0" max="100" value="0" disabled />
-                <span id="timeDisplay">0:00 / 0:00</span>
-            </div>
+  <main class="replay-container">
+    <header class="replay-header">
+      <div class="brand">
+        <div class="brand-mark">R</div>
+        <div>
+          <h1>Session Replay</h1>
+          <p class="subtle">Review the timeline, messages, ideas and phases of a completed or active session.</p>
         </div>
+      </div>
+      <div class="replay-controls">
+        <a class="nav-pill" href="/admin">Admin</a>
+        <a class="nav-pill" href="/facilitator">Facilitator</a>
+        <input type="text" id="sessionIdInput" placeholder="Enter Session ID" style="min-width:280px;" />
+        <button id="loadSession" class="btn btn-primary">Load</button>
+      </div>
+    </header>
 
-        <div class="replay-content">
-            <div class="messages-panel">
-                <h3>Messages</h3>
-                <div id="messagesList" class="messages-list"></div>
-            </div>
-            <div class="ideas-panel">
-                <h3>Ideas Generated</h3>
-                <div id="ideasList" class="ideas-list"></div>
-            </div>
+    <section class="timeline-container">
+      <div class="card-title-row">
+        <div>
+          <h2>Timeline</h2>
+          <p id="sessionSummary" class="subtle">Load a session to start replay.</p>
         </div>
+        <span id="loadedStatus" class="status offline">No session loaded</span>
+      </div>
+      <div id="timeline" class="timeline"></div>
+      <div class="playback-controls">
+        <button id="playBtn" class="btn btn-success" disabled>Play</button>
+        <button id="pauseBtn" class="btn btn-warning" disabled>Pause</button>
+        <input type="range" id="seekBar" min="0" max="100" value="0" disabled />
+        <span id="timeDisplay" class="pill">0:00 / 0:00</span>
+      </div>
+    </section>
 
-        <div class="phase-indicator">
-            <h3>Phase Timeline</h3>
-            <div id="phaseTimeline" class="phase-timeline"></div>
-        </div>
-    </div>
+    <section class="phase-indicator">
+      <h2>Phase timeline</h2>
+      <div id="phaseTimeline" class="phase-timeline"><p class="empty-state">No phase data yet.</p></div>
+    </section>
 
-    <script>
-        let replayData = null;
-        let currentIndex = 0;
-        let isPlaying = false;
-        let playbackInterval = null;
+    <section class="replay-content" style="margin-top:18px;">
+      <article class="messages-panel">
+        <h2>Messages</h2>
+        <div id="messagesList" class="messages-list"><p class="empty-state">No messages loaded.</p></div>
+      </article>
+      <article class="ideas-panel">
+        <h2>Ideas generated</h2>
+        <div id="ideasList" class="ideas-list"><p class="empty-state">No ideas loaded.</p></div>
+      </article>
+    </section>
 
-        async function loadSession() {
-            const sessionId = document.getElementById('sessionIdInput').value;
-            if (!sessionId) {
-                alert('Please enter a session ID');
-                return;
-            }
+    <section class="card full-span" style="margin-top:18px;">
+      <h2>Trace log</h2>
+      <div id="traceList" class="traces-list"><p class="empty-state">No traces loaded.</p></div>
+    </section>
+  </main>
 
-            try {
-                const response = await fetch(`/admin/api/replay?session_id=${sessionId}`);
-                if (!response.ok) throw new Error('Session not found');
-                replayData = await response.json();
-                renderTimeline();
-                renderMessages();
-                renderIdeas();
-                renderPhases();
-                enableControls();
-            } catch (error) {
-                console.error('Failed to load session:', error);
-                alert('Failed to load session: ' + error.message);
-            }
-        }
+  <script>
+    let replayData = null;
+    let currentIndex = 0;
+    let playbackInterval = null;
 
-        function renderTimeline() {
-            const container = document.getElementById('timeline');
-            if (!replayData || !replayData.messages) {
-                container.innerHTML = '<p class="empty-state">No data available</p>';
-                return;
-            }
+    const $ = (id) => document.getElementById(id);
+    const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    const fmt = (value) => value ? new Date(value).toLocaleTimeString() : '-';
 
-            const totalMs = replayData.duration_seconds * 1000;
-            container.innerHTML = replayData.messages.map((msg, idx) => {
-                const time = new Date(msg.created_at).getTime();
-                const startTime = new Date(replayData.messages[0].created_at).getTime();
-                const position = ((time - startTime) / totalMs) * 100;
-                return `<div class="timeline-event" style="left: ${position}%" data-index="${idx}"></div>`;
-            }).join('');
-        }
+    const urlSession = new URLSearchParams(window.location.search).get('session_id');
+    if (urlSession) $('sessionIdInput').value = urlSession;
 
-        function renderMessages() {
-            const container = document.getElementById('messagesList');
-            if (!replayData || !replayData.messages) {
-                container.innerHTML = '<p class="empty-state">No messages</p>';
-                return;
-            }
+    async function loadSession() {
+      const sessionId = $('sessionIdInput').value.trim();
+      if (!sessionId) return alert('Please enter a session ID.');
 
-            container.innerHTML = replayData.messages.map(msg => `
-                <div class="message-item">
-                    <span class="msg-time">${new Date(msg.created_at).toLocaleTimeString()}</span>
-                    <span class="msg-type">${msg.participant_type || 'system'}</span>
-                    <span class="msg-text">${msg.text || msg.content || ''}</span>
-                </div>
-            `).join('');
-        }
+      try {
+        const response = await fetch(`/admin/api/replay?session_id=${encodeURIComponent(sessionId)}`);
+        if (!response.ok) throw new Error('Session not found');
+        replayData = await response.json();
+        currentIndex = 0;
+        renderSummary();
+        renderTimeline();
+        renderMessages();
+        renderIdeas();
+        renderPhases();
+        renderTraces();
+        enableControls();
+      } catch (error) {
+        $('loadedStatus').className = 'status offline';
+        $('loadedStatus').textContent = 'Load failed';
+        alert('Failed to load session: ' + error.message);
+      }
+    }
 
-        function renderIdeas() {
-            const container = document.getElementById('ideasList');
-            if (!replayData || !replayData.ideas) {
-                container.innerHTML = '<p class="empty-state">No ideas</p>';
-                return;
-            }
+    function renderSummary() {
+      const s = replayData.session || {};
+      $('loadedStatus').className = 'status online';
+      $('loadedStatus').textContent = 'Session loaded';
+      $('sessionSummary').innerHTML = `${esc(s.topic || 'Untitled session')} · phase <strong>${esc(s.current_phase || '-')}</strong> · ${replayData.messages.length} message(s)`;
+    }
 
-            container.innerHTML = replayData.ideas.map(idea => `
-                <div class="idea-item">
-                    <span class="idea-theme">${idea.theme || 'general'}</span>
-                    <span class="idea-text">${idea.text}</span>
-                    <span class="idea-quality">${idea.quality_score || 0}</span>
-                </div>
-            `).join('');
-        }
-
-        function renderPhases() {
-            const container = document.getElementById('phaseTimeline');
-            if (!replayData || !replayData.phases) {
-                container.innerHTML = '<p class="empty-state">No phase data</p>';
-                return;
-            }
-
-            container.innerHTML = replayData.phases.map(phase => `
-                <div class="phase-block ${phase.active ? 'active' : ''}">
-                    <span class="phase-name">${phase.name || phase}</span>
-                </div>
-            `).join('');
-        }
-
-        function enableControls() {
-            document.getElementById('playBtn').disabled = false;
-            document.getElementById('pauseBtn').disabled = false;
-            document.getElementById('seekBar').disabled = false;
-            updateTimeDisplay();
-        }
-
-        function play() {
-            if (!replayData || !replayData.messages) return;
-            isPlaying = true;
-            playbackInterval = setInterval(() => {
-                if (currentIndex < replayData.messages.length - 1) {
-                    currentIndex++;
-                    highlightCurrentMessage();
-                    updateSeekBar();
-                } else {
-                    pause();
-                }
-            }, 1000);
-        }
-
-        function pause() {
-            isPlaying = false;
-            if (playbackInterval) {
-                clearInterval(playbackInterval);
-                playbackInterval = null;
-            }
-        }
-
-        function highlightCurrentMessage() {
-            const items = document.querySelectorAll('.message-item');
-            items.forEach((item, idx) => {
-                item.classList.toggle('highlight', idx === currentIndex);
-            });
-            if (items[currentIndex]) {
-                items[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-
-        function updateSeekBar() {
-            const bar = document.getElementById('seekBar');
-            const progress = (currentIndex / (replayData.messages.length - 1)) * 100;
-            bar.value = progress || 0;
-            updateTimeDisplay();
-        }
-
-        function updateTimeDisplay() {
-            if (!replayData || !replayData.messages) return;
-            const current = replayData.messages[currentIndex];
-            const currentTime = new Date(current.created_at).toLocaleTimeString();
-            const lastTime = new Date(replayData.messages[replayData.messages.length - 1].created_at).toLocaleTimeString();
-            document.getElementById('timeDisplay').textContent = `${currentTime} / ${lastTime}`;
-        }
-
-        document.getElementById('loadSession').addEventListener('click', loadSession);
-        document.getElementById('playBtn').addEventListener('click', play);
-        document.getElementById('pauseBtn').addEventListener('click', pause);
-        document.getElementById('seekBar').addEventListener('input', (e) => {
-            if (!replayData || !replayData.messages) return;
-            const progress = e.target.value / 100;
-            currentIndex = Math.floor(progress * (replayData.messages.length - 1));
-            highlightCurrentMessage();
-            updateTimeDisplay();
+    function renderTimeline() {
+      const container = $('timeline');
+      const messages = replayData?.messages || [];
+      if (!messages.length) {
+        container.innerHTML = '<p class="empty-state">No message events available.</p>';
+        return;
+      }
+      const startTime = new Date(messages[0].created_at).getTime();
+      const endTime = new Date(messages[messages.length - 1].created_at).getTime();
+      const totalMs = Math.max(1, endTime - startTime);
+      container.innerHTML = messages.map((msg, idx) => {
+        const time = new Date(msg.created_at).getTime();
+        const position = Math.max(3, Math.min(97, ((time - startTime) / totalMs) * 100));
+        return `<button class="timeline-event" title="${esc(msg.participant_id)} - ${fmt(msg.created_at)}" style="left:${position}%" data-index="${idx}"></button>`;
+      }).join('');
+      container.querySelectorAll('.timeline-event').forEach(el => {
+        el.addEventListener('click', () => {
+          currentIndex = Number(el.dataset.index);
+          highlightCurrentMessage();
+          updateSeekBar();
         });
-    </script>
+      });
+    }
+
+    function renderMessages() {
+      const container = $('messagesList');
+      const messages = replayData?.messages || [];
+      container.innerHTML = messages.length ? messages.map((msg, idx) => `
+        <div class="message-item" data-index="${idx}">
+          <div class="message-header"><span>${fmt(msg.created_at)}</span><span class="pill primary">${esc(msg.participant_id)}</span><span>${esc(msg.participant_type || 'participant')}</span></div>
+          <div class="message-text">${esc(msg.text || '')}</div>
+        </div>
+      `).join('') : '<p class="empty-state">No messages.</p>';
+    }
+
+    function renderIdeas() {
+      const container = $('ideasList');
+      const ideas = replayData?.ideas || [];
+      container.innerHTML = ideas.length ? ideas.map(idea => `
+        <div class="idea-item">
+          <div class="message-header"><span class="pill primary">${esc(idea.theme || 'general')}</span><span>score ${esc(idea.quality_score || 0)}</span></div>
+          <div class="message-text">${esc(idea.text || '')}</div>
+        </div>
+      `).join('') : '<p class="empty-state">No ideas recorded yet.</p>';
+    }
+
+    function renderPhases() {
+      const phases = replayData?.phases || [];
+      $('phaseTimeline').innerHTML = phases.length ? phases.map(phase => `
+        <div class="phase-block ${phase.active ? 'active' : ''}">${esc(phase.name || phase)}</div>
+      `).join('') : '<p class="empty-state">No phase data.</p>';
+    }
+
+    function renderTraces() {
+      const traces = replayData?.traces || [];
+      $('traceList').innerHTML = traces.length ? traces.map(trace => `
+        <div class="trace-item">
+          <div class="trace-meta"><span>${fmt(trace.created_at)}</span><span class="pill primary">${esc(trace.trace_type)}</span><span>${esc(trace.actor)}</span></div>
+          <div class="trace-description">${esc(trace.description || '')}</div>
+        </div>
+      `).join('') : '<p class="empty-state">No trace records for this session.</p>';
+    }
+
+    function enableControls() {
+      $('playBtn').disabled = false;
+      $('pauseBtn').disabled = false;
+      $('seekBar').disabled = false;
+      highlightCurrentMessage();
+      updateTimeDisplay();
+    }
+
+    function play() {
+      const messages = replayData?.messages || [];
+      if (!messages.length) return;
+      clearInterval(playbackInterval);
+      playbackInterval = setInterval(() => {
+        if (currentIndex < messages.length - 1) {
+          currentIndex++;
+          highlightCurrentMessage();
+          updateSeekBar();
+        } else {
+          pause();
+        }
+      }, 900);
+    }
+
+    function pause() {
+      clearInterval(playbackInterval);
+      playbackInterval = null;
+    }
+
+    function highlightCurrentMessage() {
+      document.querySelectorAll('.message-item').forEach((item, idx) => item.classList.toggle('highlight', idx === currentIndex));
+      const item = document.querySelector(`.message-item[data-index="${currentIndex}"]`);
+      if (item) item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      updateTimeDisplay();
+    }
+
+    function updateSeekBar() {
+      const messages = replayData?.messages || [];
+      const maxIndex = Math.max(1, messages.length - 1);
+      $('seekBar').value = (currentIndex / maxIndex) * 100;
+      updateTimeDisplay();
+    }
+
+    function updateTimeDisplay() {
+      const messages = replayData?.messages || [];
+      if (!messages.length) {
+        $('timeDisplay').textContent = '0:00 / 0:00';
+        return;
+      }
+      const current = messages[currentIndex] || messages[0];
+      const last = messages[messages.length - 1];
+      $('timeDisplay').textContent = `${fmt(current.created_at)} / ${fmt(last.created_at)}`;
+    }
+
+    $('loadSession').addEventListener('click', loadSession);
+    $('playBtn').addEventListener('click', play);
+    $('pauseBtn').addEventListener('click', pause);
+    $('seekBar').addEventListener('input', (e) => {
+      const messages = replayData?.messages || [];
+      if (!messages.length) return;
+      currentIndex = Math.round((Number(e.target.value) / 100) * (messages.length - 1));
+      highlightCurrentMessage();
+    });
+
+    if (urlSession) loadSession();
+  </script>
 </body>
 </html>
