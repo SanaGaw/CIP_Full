@@ -1,28 +1,28 @@
 # CIP v2.0 — Feature Audit Report
-_Generated: 2026-04-29T00:23:23.697806Z_
+_Generated: 2026-04-29T00:26:42.879562Z_
 
 ## Summary
 - Total checks: **94**
-- ✅ PASS:  **62**
-- ⚠️ STUB:  **21**  (exists but not real)
-- ❌ FAIL:  **11**  (missing or broken)
-- **Implementation completeness: 66%**
+- ✅ PASS:  **72**
+- ⚠️ STUB:  **18**  (exists but not real)
+- ❌ FAIL:  **4**  (missing or broken)
+- **Implementation completeness: 77%**
 
 ## Results by category
 
-### AGENT_CONV  (0/9)
+### AGENT_CONV  (9/9)
 
 | Check | Status | Evidence |
 |---|---|---|
-| mode_LISTEN | ⚠️ STUB | handler is empty/skeleton |
-| mode_NARRATE | ⚠️ STUB | handler is empty/skeleton |
-| mode_REFLECT | ❌ FAIL | not implemented |
-| mode_BRIDGE | ❌ FAIL | not implemented |
-| mode_RECALL | ❌ FAIL | not implemented |
-| mode_PREMORTEM | ❌ FAIL | not implemented |
-| mode_CRITERIA | ❌ FAIL | not implemented |
-| mode_PAIRWISE | ❌ FAIL | not implemented |
-| profile_update_parsing | ❌ FAIL | no PROFILE_UPDATE block parsing |
+| mode_LISTEN | ✅ PASS |  |
+| mode_NARRATE | ✅ PASS |  |
+| mode_REFLECT | ✅ PASS |  |
+| mode_BRIDGE | ✅ PASS |  |
+| mode_RECALL | ✅ PASS |  |
+| mode_PREMORTEM | ✅ PASS |  |
+| mode_CRITERIA | ✅ PASS |  |
+| mode_PAIRWISE | ✅ PASS |  |
+| profile_update_parsing | ✅ PASS |  |
 
 ### AGENT_DEVIL  (0/3)
 
@@ -208,38 +208,29 @@ _Generated: 2026-04-29T00:23:23.697806Z_
 | facilitator_dashboard | ⚠️ STUB | only 12 lines, skeleton |
 | replay_session | ⚠️ STUB | only 13 lines, skeleton |
 
-### TESTS  (0/1)
+### TESTS  (1/1)
 
 | Check | Status | Evidence |
 |---|---|---|
-| pytest_run | ⚠️ STUB | 9 passed, 1 failed |
+| pytest_run | ✅ PASS | 14 passed, 0 failed |
 
 ## Compact JSON (for paste-back to Claude)
 ```json
 {
   "summary": {
     "total": 94,
-    "pass": 62,
-    "stub": 21,
-    "fail": 11,
-    "pct": 66
+    "pass": 72,
+    "stub": 18,
+    "fail": 4,
+    "pct": 77
   },
   "fails": [
-    "mode_REFLECT",
-    "mode_BRIDGE",
-    "mode_RECALL",
-    "mode_PREMORTEM",
-    "mode_CRITERIA",
-    "mode_PAIRWISE",
-    "profile_update_parsing",
     "stress_test",
     "11_section_report",
     "json_output",
     "imports_cleanly"
   ],
   "stubs": [
-    "mode_LISTEN",
-    "mode_NARRATE",
     "phase_frameworks",
     "implementation",
     "uses_llm",
@@ -257,8 +248,7 @@ _Generated: 2026-04-29T00:23:23.697806Z_
     "participant_chat",
     "admin_dashboard",
     "facilitator_dashboard",
-    "replay_session",
-    "pytest_run"
+    "replay_session"
   ]
 }
 ```
