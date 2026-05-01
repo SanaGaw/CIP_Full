@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facilitator Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="facilitator-container">
+        <header class="fac-header">
+            <h1>Facilitator Control Panel</h1>
+            <div class="session-info">
+                <span id="sessionStatus">No Active Session</span>
+            </div>
+        </header>
+
+        <div class="controls-grid">
+            <div class="control-card">
+                <h3>Session Control</h3>
+                <div class="control-buttons">
+                    <button id="startSession" class="btn btn-success">Start Session</button>
+                    <select id="phaseSelect" class="phase-dropdown">
+                        <option value="clarification">Clarification</option>
+                        <option value="ideation">Ideation</option>
+                        <option value="evaluation">Evaluation</option>
+                        <option value="refinement">Refinement</option>
+                    </select>
+                    <button id="advancePhase" class="btn btn-primary">Advance Phase</button>
+                </div>
+            </div>
+
+            <div class="control-card">
+                <h3>Devil's Advocate</h3>
+                <button id="triggerDevil" class="btn btn-warning">Trigger Challenge</button>
+                <div id="devilOutput" class="output-area"></div>
+            </div>
+
+            <div class="control-card">
+                <h3>Content Injection</h3>
+                <textarea id="injectContent" placeholder="Enter content to inject..."></textarea>
+                <select id="injectType">
+                    <option value="prompt">Prompt</option>
+                    <option value="question">Question</option>
+                    <option value="idea">Idea</option>
+                </select>
+                <button id="injectBtn" class="btn btn-secondary">Inject</button>
+            </div>
+
+            <div class="control-card">
+                <h3>Session State</h3>
+                <div id="sessionState" class="state-display">
+                    <div class="state-item"><span>Ideas:</span> <span id="ideasCount">0</span></div>
+                    <div class="state-item"><span>Participants:</span> <span id="participantsCount">0</span></div>
+                    <div class="state-item"><span>Phase:</span> <span id="currentPhase">-</span></div>
+                </div>
+                <button id="refreshState" class="btn">Refresh</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let activeSessionId = null;
+        let ws = null;
+
+        async function startSession() {
+            try {
+                const response = await fetch('/facilitator/api/session/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const data = await response.json();
+                activeSessionId = data.session_id;
+                document.getElementById('sessionStatus').textContent = `Session: ${activeSessionId.slice(0, 8)}...`;
+                document.getElementById('sessionStatus').className = 'active';
+                loadSessionState();
+            } catch (error) {
+                console.error('Failed to start session:', error);
+            }
+        }
+
+        async function advancePhase() {
+            if (!activeSessionId) {
+                alert('Start a session first');
+                return;
+            }
+            const phase = document.getElementById('phaseSelect').value;
+            try {
+                await fetch(`/facilitator/api/session/phase?session_id=${activeSessionId}&phase=${phase}`, {
+                    method: 'POST'
+                });
+                loadSessionState();
+            } catch (error) {
+                console.error('Failed to advance phase:', error);
+            }
+        }
+
+        async function triggerDevil() {
+            if (!activeSessionId) {
+                alert('Start a session first');
+                return;
+            }
+            const phase = document.getElementById('phaseSelect').value;
+            try {
+                const response = await fetch(`/facilitator/api/session/devil?session_id=${activeSessionId}&phase=${phase}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                const output = document.getElementById('devilOutput');
+                output.innerHTML = data.challenges.map(c => `<p>${c}</p>`).join('');
+            } catch (error) {
+                console.error('Failed to trigger devil:', error);
+            }
+        }
+
+        async function injectContent() {
+            if (!activeSessionId) {
+                alert('Start a session first');
+                return;
+            }
+            const content = document.getElementById('injectContent').value;
+            const contentType = document.getElementById('injectType').value;
+            if (!content) return;
+
+            try {
+                await fetch(`/facilitator/api/session/inject?session_id=${activeSessionId}&content=${encodeURIComponent(content)}&content_type=${contentType}`, {
+                    method: 'POST'
+                });
+                document.getElementById('injectContent').value = '';
+            } catch (error) {
+                console.error('Failed to inject content:', error);
+            }
+        }
+
+        async function loadSessionState() {
+            if (!activeSessionId) return;
+            try {
+                const response = await fetch(`/facilitator/api/session/state?session_id=${activeSessionId}`);
+                const data = await response.json();
+                document.getElementById('ideasCount').textContent = data.ideas_count || 0;
+                document.getElementById('participantsCount').textContent = data.participants_count || 0;
+                document.getElementById('currentPhase').textContent = data.phase || '-';
+            } catch (error) {
+                console.error('Failed to load session state:', error);
+            }
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws/facilitator`);
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'session_update' && data.session_id === activeSessionId) {
+                    loadSessionState();
+                }
+            };
+        }
+
+        document.getElementById('startSession').addEventListener('click', startSession);
+        document.getElementById('advancePhase').addEventListener('click', advancePhase);
+        document.getElementById('triggerDevil').addEventListener('click', triggerDevil);
+        document.getElementById('injectBtn').addEventListener('click', injectContent);
+        document.getElementById('refreshState').addEventListener('click', loadSessionState);
+
+        connectWebSocket();
+    </script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Replay</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="replay-container">
+        <header class="replay-header">
+            <h1>Session Replay</h1>
+            <div class="replay-controls">
+                <input type="text" id="sessionIdInput" placeholder="Enter Session ID" />
+                <button id="loadSession" class="btn">Load</button>
+            </div>
+        </header>
+
+        <div class="timeline-container">
+            <div id="timeline" class="timeline"></div>
+            <div class="playback-controls">
+                <button id="playBtn" class="btn btn-play" disabled>Play</button>
+                <button id="pauseBtn" class="btn btn-pause" disabled>Pause</button>
+                <input type="range" id="seekBar" min="0" max="100" value="0" disabled />
+                <span id="timeDisplay">0:00 / 0:00</span>
+            </div>
+        </div>
+
+        <div class="replay-content">
+            <div class="messages-panel">
+                <h3>Messages</h3>
+                <div id="messagesList" class="messages-list"></div>
+            </div>
+            <div class="ideas-panel">
+                <h3>Ideas Generated</h3>
+                <div id="ideasList" class="ideas-list"></div>
+            </div>
+        </div>
+
+        <div class="phase-indicator">
+            <h3>Phase Timeline</h3>
+            <div id="phaseTimeline" class="phase-timeline"></div>
+        </div>
+    </div>
+
+    <script>
+        let replayData = null;
+        let currentIndex = 0;
+        let isPlaying = false;
+        let playbackInterval = null;
+
+        async function loadSession() {
+            const sessionId = document.getElementById('sessionIdInput').value;
+            if (!sessionId) {
+                alert('Please enter a session ID');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/api/replay?session_id=${sessionId}`);
+                if (!response.ok) throw new Error('Session not found');
+                replayData = await response.json();
+                renderTimeline();
+                renderMessages();
+                renderIdeas();
+                renderPhases();
+                enableControls();
+            } catch (error) {
+                console.error('Failed to load session:', error);
+                alert('Failed to load session: ' + error.message);
+            }
+        }
+
+        function renderTimeline() {
+            const container = document.getElementById('timeline');
+            if (!replayData || !replayData.messages) {
+                container.innerHTML = '<p class="empty-state">No data available</p>';
+                return;
+            }
+
+            const totalMs = replayData.duration_seconds * 1000;
+            container.innerHTML = replayData.messages.map((msg, idx) => {
+                const time = new Date(msg.created_at).getTime();
+                const startTime = new Date(replayData.messages[0].created_at).getTime();
+                const position = ((time - startTime) / totalMs) * 100;
+                return `<div class="timeline-event" style="left: ${position}%" data-index="${idx}"></div>`;
+            }).join('');
+        }
+
+        function renderMessages() {
+            const container = document.getElementById('messagesList');
+            if (!replayData || !replayData.messages) {
+                container.innerHTML = '<p class="empty-state">No messages</p>';
+                return;
+            }
+
+            container.innerHTML = replayData.messages.map(msg => `
+                <div class="message-item">
+                    <span class="msg-time">${new Date(msg.created_at).toLocaleTimeString()}</span>
+                    <span class="msg-type">${msg.participant_type || 'system'}</span>
+                    <span class="msg-text">${msg.text || msg.content || ''}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderIdeas() {
+            const container = document.getElementById('ideasList');
+            if (!replayData || !replayData.ideas) {
+                container.innerHTML = '<p class="empty-state">No ideas</p>';
+                return;
+            }
+
+            container.innerHTML = replayData.ideas.map(idea => `
+                <div class="idea-item">
+                    <span class="idea-theme">${idea.theme || 'general'}</span>
+                    <span class="idea-text">${idea.text}</span>
+                    <span class="idea-quality">${idea.quality_score || 0}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderPhases() {
+            const container = document.getElementById('phaseTimeline');
+            if (!replayData || !replayData.phases) {
+                container.innerHTML = '<p class="empty-state">No phase data</p>';
+                return;
+            }
+
+            container.innerHTML = replayData.phases.map(phase => `
+                <div class="phase-block ${phase.active ? 'active' : ''}">
+                    <span class="phase-name">${phase.name || phase}</span>
+                </div>
+            `).join('');
+        }
+
+        function enableControls() {
+            document.getElementById('playBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = false;
+            document.getElementById('seekBar').disabled = false;
+            updateTimeDisplay();
+        }
+
+        function play() {
+            if (!replayData || !replayData.messages) return;
+            isPlaying = true;
+            playbackInterval = setInterval(() => {
+                if (currentIndex < replayData.messages.length - 1) {
+                    currentIndex++;
+                    highlightCurrentMessage();
+                    updateSeekBar();
+                } else {
+                    pause();
+                }
+            }, 1000);
+        }
+
+        function pause() {
+            isPlaying = false;
+            if (playbackInterval) {
+                clearInterval(playbackInterval);
+                playbackInterval = null;
+            }
+        }
+
+        function highlightCurrentMessage() {
+            const items = document.querySelectorAll('.message-item');
+            items.forEach((item, idx) => {
+                item.classList.toggle('highlight', idx === currentIndex);
+            });
+            if (items[currentIndex]) {
+                items[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function updateSeekBar() {
+            const bar = document.getElementById('seekBar');
+            const progress = (currentIndex / (replayData.messages.length - 1)) * 100;
+            bar.value = progress || 0;
+            updateTimeDisplay();
+        }
+
+        function updateTimeDisplay() {
+            if (!replayData || !replayData.messages) return;
+            const current = replayData.messages[currentIndex];
+            const currentTime = new Date(current.created_at).toLocaleTimeString();
+            const lastTime = new Date(replayData.messages[replayData.messages.length - 1].created_at).toLocaleTimeString();
+            document.getElementById('timeDisplay').textContent = `${currentTime} / ${lastTime}`;
+        }
+
+        document.getElementById('loadSession').addEventListener('click', loadSession);
+        document.getElementById('playBtn').addEventListener('click', play);
+        document.getElementById('pauseBtn').addEventListener('click', pause);
+        document.getElementById('seekBar').addEventListener('input', (e) => {
+            if (!replayData || !replayData.messages) return;
+            const progress = e.target.value / 100;
+            currentIndex = Math.floor(progress * (replayData.messages.length - 1));
+            highlightCurrentMessage();
+            updateTimeDisplay();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>Operator Dashboard</h1>
+            <div class="header-actions">
+                <button id="refreshBtn" class="btn">Refresh</button>
+                <select id="sessionSelect">
+                    <option value="">Select Session</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <div class="card telemetry-card">
+                <h2>System Telemetry</h2>
+                <div id="telemetryData" class="metrics-grid"></div>
+            </div>
+
+            <div class="card traces-card">
+                <h2>Recent Traces</h2>
+                <div id="tracesList" class="traces-list"></div>
+            </div>
+
+            <div class="card report-card">
+                <h2>Session Report</h2>
+                <div id="reportData" class="report-preview"></div>
+                <button id="downloadReport" class="btn btn-primary">Download Report</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSessionId = null;
+        let ws = null;
+
+        async function loadTelemetry() {
+            try {
+                const response = await fetch('/admin/api/telemetry');
+                const data = await response.json();
+                renderTelemetry(data);
+            } catch (error) {
+                console.error('Failed to load telemetry:', error);
+            }
+        }
+
+        function renderTelemetry(data) {
+            const container = document.getElementById('telemetryData');
+            container.innerHTML = `
+                <div class="metric">
+                    <span class="metric-label">Active Sessions</span>
+                    <span class="metric-value">${data.active_sessions || 0}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Total Participants</span>
+                    <span class="metric-value">${data.total_participants || 0}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Messages/min</span>
+                    <span class="metric-value">${data.messages_per_minute || 0}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Avg Response</span>
+                    <span class="metric-value">${data.avg_response_time_ms || 0}ms</span>
+                </div>
+            `;
+        }
+
+        async function loadTraces(sessionId) {
+            try {
+                const url = sessionId ? `/admin/api/traces?session_id=${sessionId}` : '/admin/api/traces';
+                const response = await fetch(url);
+                const data = await response.json();
+                renderTraces(data.traces);
+            } catch (error) {
+                console.error('Failed to load traces:', error);
+            }
+        }
+
+        function renderTraces(traces) {
+            const container = document.getElementById('tracesList');
+            if (!traces || traces.length === 0) {
+                container.innerHTML = '<p class="empty-state">No traces available</p>';
+                return;
+            }
+            container.innerHTML = traces.slice(0, 20).map(trace => `
+                <div class="trace-item">
+                    <span class="trace-time">${new Date(trace.created_at).toLocaleTimeString()}</span>
+                    <span class="trace-agent">${trace.agent || 'system'}</span>
+                    <span class="trace-event">${trace.event || 'event'}</span>
+                </div>
+            `).join('');
+        }
+
+        async function loadReport(sessionId) {
+            if (!sessionId) {
+                document.getElementById('reportData').innerHTML = '<p class="empty-state">Select a session</p>';
+                return;
+            }
+            try {
+                const response = await fetch(`/admin/api/report?session_id=${sessionId}`);
+                const data = await response.json();
+                renderReport(data);
+            } catch (error) {
+                console.error('Failed to load report:', error);
+            }
+        }
+
+        function renderReport(data) {
+            const container = document.getElementById('reportData');
+            container.innerHTML = `
+                <div class="report-summary">
+                    <p><strong>Status:</strong> ${data.status || 'N/A'}</p>
+                    <p><strong>Total Ideas:</strong> ${data.total_ideas || 0}</p>
+                    <p><strong>Total Clusters:</strong> ${data.total_clusters || 0}</p>
+                </div>
+            `;
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws/admin`);
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'telemetry_update') {
+                    renderTelemetry(data);
+                } else if (data.type === 'new_trace') {
+                    loadTraces(currentSessionId);
+                }
+            };
+        }
+
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            loadTelemetry();
+            loadTraces(currentSessionId);
+            loadReport(currentSessionId);
+        });
+
+        document.getElementById('sessionSelect').addEventListener('change', (e) => {
+            currentSessionId = e.target.value;
+            loadTraces(currentSessionId);
+            loadReport(currentSessionId);
+        });
+
+        document.getElementById('downloadReport').addEventListener('click', () => {
+            if (currentSessionId) {
+                window.open(`/admin/api/report?session_id=${currentSessionId}&format=pdf`, '_blank');
+            }
+        });
+
+        loadTelemetry();
+        loadTraces(null);
+        connectWebSocket();
+    </script>
+</body>
+</html>
